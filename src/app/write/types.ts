@@ -1,6 +1,7 @@
 export type PublishForm = {
 	slug: string
 	title: string
+	author?: string
 	md: string
 	tags: string[]
 	date: string

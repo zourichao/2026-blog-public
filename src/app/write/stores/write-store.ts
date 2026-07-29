@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { toast } from 'sonner'
 import { hashFileSHA256 } from '@/lib/file-utils'
 import { loadBlog } from '@/lib/load-blog'
+import { DEFAULT_BLOG_AUTHOR, getBlogAuthor } from '@/lib/blog-author'
 import type { PublishForm, ImageItem } from '../types'
 
 export const formatDateTimeLocal = (date: Date = new Date()): string => {
@@ -49,6 +50,7 @@ type WriteStore = {
 const initialForm: PublishForm = {
 	slug: '',
 	title: '',
+	author: DEFAULT_BLOG_AUTHOR,
 	md: '',
 	tags: [],
 	date: formatDateTimeLocal(),
@@ -190,6 +192,7 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 				form: {
 					slug,
 					title: blog.config.title || '',
+					author: getBlogAuthor(blog.config.author),
 					md: blog.markdown,
 					tags: blog.config.tags || [],
 					date: blog.config.date ? formatDateTimeLocal(new Date(blog.config.date)) : formatDateTimeLocal(),

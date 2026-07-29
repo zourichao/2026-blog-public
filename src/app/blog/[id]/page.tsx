@@ -73,6 +73,7 @@ export default function Page() {
 			<BlogPreview
 				markdown={blog.markdown}
 				title={title}
+				author={blog.config.author}
 				tags={tags}
 				date={date}
 				summary={blog.config.summary}

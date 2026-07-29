@@ -4,6 +4,7 @@ import path from 'node:path'
 import siteContent from '@/config/site-content.json'
 import blogIndex from '@/../public/blogs/index.json'
 import type { BlogIndexItem } from '@/app/blog/types'
+import { getBlogAuthor } from '@/lib/blog-author'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yysuni.com'
 const FEED_PATH = '/rss.xml'
@@ -66,6 +67,7 @@ const serializeItem = (item: BlogIndexItem): string => {
 	const link = `${SITE_ORIGIN}/blog/${item.slug}`
 	const title = escapeXml(item.title || item.slug)
 	const description = wrapCdata(item.summary || '')
+	const author = escapeXml(getBlogAuthor(item.author))
 	const pubDate = new Date(item.date).toUTCString()
 	const categories = (item.tags || [])
 		.filter(Boolean)
@@ -80,6 +82,7 @@ const serializeItem = (item: BlogIndexItem): string => {
 			<link>${link}</link>
 			<guid isPermaLink="false">${escapeXml(link)}</guid>
 			<description>${description}</description>
+			<author>${author}</author>
 			<pubDate>${pubDate}</pubDate>
 			${categories}
 			${enclosure ?? ''}

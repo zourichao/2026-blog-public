@@ -18,6 +18,7 @@ export function WritePreview({ form, coverPreviewUrl, onClose, slug }: WritePrev
 				<BlogPreview
 					markdown={previewData.markdown}
 					title={previewData.title}
+					author={form.author}
 					tags={form.tags}
 					date={previewData.date}
 					summary={form.summary}

@@ -21,6 +21,7 @@ import { saveBlogEdits } from './services/save-blog-edits'
 import { Check } from 'lucide-react'
 import { BlogCoverHoverPreview, useBlogCoverHover } from './components/blog-cover-hover'
 import { CategoryModal } from './components/category-modal'
+import { getBlogAuthor } from '@/lib/blog-author'
 
 type DisplayMode = 'day' | 'week' | 'month' | 'year' | 'category'
 
@@ -434,6 +435,7 @@ export default function BlogPage() {
 												{it.title || it.slug}
 												{hasRead && <span className='text-secondary ml-2 text-xs'>[已阅读]</span>}
 											</div>
+											<span className='text-secondary shrink-0 text-xs'>{getBlogAuthor(it.author)}</span>
 											<div className='flex flex-wrap items-center gap-2 max-sm:hidden'>
 												{(it.tags || []).map(t => (
 													<span key={t} className='text-secondary text-sm'>
