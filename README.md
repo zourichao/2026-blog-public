@@ -1,164 +1,478 @@
-# 2025 Blog
+# 999562.xyz
 
-> 最新引导说明：https://www.yysuni.com/blog/readme
+> A personal blog about design, technology, and life.
 
-该项目使用 Github App 管理项目内容，请保管好后续创建的 **Private key**，不要上传到公开网上。
+[999562.xyz](https://www.999562.xyz) 是一个面向个人长期使用的品牌站、作品集与轻量博客，主要用于记录设计、技术与生活，分享产品思考、项目实践、学习记录与个人作品。
 
-## 1. 安装
+## 项目定位
 
-使用该项目可以先不做本地开发，直接部署然后配置环境变量。具体变量名请看下列大写变量
+这个项目不是传统的数据库型 CMS，也没有独立后台服务器。
+
+文章、图片、站点配置等内容直接保存在 GitHub 仓库中；网站前台通过 GitHub App 获得受控写入权限，发布内容后由部署平台自动重新构建并更新网站。
+
+核心链路：
+
+```text
+网站前台编辑
+→ GitHub App 授权
+→ 写入 GitHub 仓库
+→ main 分支产生 Commit
+→ EdgeOne 自动构建
+→ 正式网站更新
+```
+
+## 当前站点
+
+- 正式域名：https://www.999562.xyz
+- GitHub 仓库：`zourichao/2026-blog-public`
+- 默认分支：`main`
+- 当前生产平台：Tencent EdgeOne
+- 默认作者：`zourichao`
+- 当前搜索引擎收录：关闭
+
+搜索引擎收录由以下文件集中控制：
+
+```text
+src/config/site.ts
+```
+
+当前配置：
 
 ```ts
-export const GITHUB_CONFIG = {
-	OWNER: process.env.NEXT_PUBLIC_GITHUB_OWNER || 'yysuni',
-	REPO: process.env.NEXT_PUBLIC_GITHUB_REPO || '2025-blog-public',
-	BRANCH: process.env.NEXT_PUBLIC_GITHUB_BRANCH || 'main',
-	APP_ID: process.env.NEXT_PUBLIC_GITHUB_APP_ID || '-'
-} as const
+export const SEARCH_ENGINE_INDEXING_ENABLED = false
 ```
 
-也可以自己手动先调整安装，可自行 `pnpm i`
+正式开放收录前，需要同时确认页面 Metadata、robots、Sitemap 和站长平台配置。
 
-## 2. 部署
+## 主要功能
 
-我这里熟悉 Vercel 部署，就以 Vercel 部署为例子。创建 Project => Import 这个项目
+- Bento 风格卡片首页
+- 毛玻璃与动态背景
+- 响应式桌面端和移动端布局
+- Markdown 文章编辑与预览
+- 图片上传与文章资源管理
+- GitHub App 驱动的内容发布
+- 文章作者、标签、摘要和日期
+- RSS Feed
+- Sitemap
+- Canonical URL
+- 标准 HTTP 404 页面
+- PWA 图标与 Manifest
+- 代码高亮
+- KaTeX 数学公式
+- 文章已读状态
+- 网站前台配置入口
 
-![](https://www.yysuni.com/blogs/readme/730266f17fab9717.png)
+## 技术栈
 
-无需配置，直接点部署
+### 前端
 
-![](https://www.yysuni.com/blogs/readme/95dee9a69154d0d0.png)
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Next.js App Router
+- Zustand
+- SWR
+- Motion
 
-大约 60 秒会部署完成，有一个直接 vercel 域名，如：https://2025-blog-public.vercel.app/
+### 内容与展示
 
-到这里部署网站已经完成了，下一步创建 Github App
+- Markdown
+- Shiki
+- KaTeX
+- JSON 配置文件
+- GitHub 仓库存储
 
-## 3. 创建 Github App 链接仓库
+### 发布与部署
 
-在 github 个人设置里面，找到最下面的 Developer Settings ，点击进入
+- GitHub App
+- Git
+- Tencent EdgeOne
+- OpenNext / Cloudflare 构建兼容能力
 
-![](https://www.yysuni.com/blogs/readme/0abb3b592cbedad6.png)
+## 内容存储结构
 
-进入开发者页面，点击 **New Github App**
+每篇文章使用独立目录保存：
 
-*GitHub App name* 和 *Homepage URL* , 输入什么都不影响。Webhook 也关闭，不需要。
-
-![](https://www.yysuni.com/blogs/readme/71dcd9cf8ec967c0.png)
-
-只需要注意设置一个仓库 write 权限，其它不用。
-
-![](https://www.yysuni.com/blogs/readme/2be290016e56cd34.png)
-
-点击创建，谁能安装这个仓库这个选择无所谓。直接创建。
-
-![](https://www.yysuni.com/blogs/readme/aa002e6805ab2d65.png)
-
-
-### 创建密钥
-
-创建好 Github App 后会提示必须创建一个 **Private Key**，直接创建，会自动下载（不见了也不要紧，后面自己再创建再下载就行）。页面上有个 **App ID** 需要复制一下
-
-再切换到安装页面
-
-![](https://www.yysuni.com/blogs/readme/c122b1585bb7a46a.png)
-
-这里一定要只**授权当前项目**。
-
-![](https://www.yysuni.com/blogs/readme/2cf1cee3b04326f1.png)
-
-点击安装，就完成了 Github App 管理该仓库的权限设置了。下一步就是让前端知道推送那个项目，就是最开始提到的环境变量。（如果你不会设置环境变量，直接改仓库文件 `src/consts.ts` 也行。因为是公开的，所以环境变量意义也不大）
-
-直接输入这几个环境变量值就行，一般只用设置 OWNER 和 APP_ID。其它配置不用管，直接输入创建就行。
-
-![](https://www.yysuni.com/blogs/readme/c5a049d737848abf.png)
-
-设置完成后，需要手动再部署一次，让环境变量生效。
-* 可以直接 push 一次仓库代码会触发部署
-* 也可以手动选择创建一次部署
-![](https://www.yysuni.com/blogs/readme/59a802ed8d1c3a13.png)
-
-## 4. 完成
-
-现在，部署的这个网站就可以开始使用前端改内容了。比如更改一个分享内容。
-
-**提示**，网站前端页面删改完提示成功之后，你需要等待后台的部署完成，再刷新页面才能完成服务器内容的更新哦。
-
-## 5. 删除
-
-使用这个项目应该第一件事需要删除我的 blog，单独删除，批量删除已完成。
-
-## 6. 配置
-
-大部分页面右上角都会有一个编辑按钮，意味着你可以使用 **private key** 进行配置部署。
-
-### 6.1 网站配置
-
-首页有一个不显眼的配置按钮，点击就能看到现在可以配置的内容。
-
-![](https://www.yysuni.com/blogs/readme/cddb4710e08a5069.png)
-
-## 7. 写 blog
-
-写 blog 的图片管理，可能会有疑惑。图片管理推荐逻辑是先点击 **+ 号** 添加图片，（推荐先压缩好，尺寸推荐宽度不超过 1200）。然后将上传好的图片直接拖入文案编辑区，这就已经添加好了，点击右上角预览就可以看到效果。
-
-## 8. 写给非前端
-
-非前端配置内容，还是需要一个文件指引。下面写一些更细致的代码配置。
-
-### 8.1 移除 Liquid Grass
-
-进入 `src/layout/index.tsx` 文件，删除两行代码，然后提交代码到你的 github
-```tsx
-const LiquidGrass = dynamic(() => import('@/components/liquid-grass'), { ssr: false })
-// 中间省略...
-<LiquidGrass /> // 第 53 行
+```text
+public/blogs/{slug}/
+├─ index.md
+├─ config.json
+└─ 图片资源
 ```
 
-![](https://www.yysuni.com/blogs/readme/f70ff3fe3a77f193.png)
+其中：
 
-### 8.2 配置首页内容
+```text
+public/blogs/{slug}/index.md
+```
 
-首页的内容现在只能前端配置一部分，所以代码更改在 `src/app/(home)` 目录，这个目录代表首页所有文件。首页的具体文件为  `src/app/(home)/page.tsx`
+保存文章正文。
 
- ![](https://www.yysuni.com/blogs/readme/011679cd9bf73602.png)
+```text
+public/blogs/{slug}/config.json
+```
 
-这里可以看到有很多 `Card` 文件，需要改那个首页 Card 内容就可以点入那个具体文件修改。
+保存文章标题、摘要、作者、日期、标签、分类和显示状态等配置。
 
-比如中间的内容，为 `HiCard`，点击 `hi-card.tsx` 文件，即可更改其内容。
+```text
+public/blogs/index.json
+```
 
-![](https://www.yysuni.com/blogs/readme/20b0791d012163ee.png)
+保存文章总索引。
 
-## 9. 互助群
+```text
+public/blogs/categories.json
+```
 
-对于完全不是**程序员**的用户，确实会对于更新代码后，如何同步，如何**合并代码**手足无措。我创建了一个 **QQ群**（加群会简单点），或者 vx 群还是 tg 群会好一点可以 issue 里面说下就行。
+保存分类数据。
 
-QQ 群：[https://qm.qq.com/q/spdpenr4k2](https://qm.qq.com/q/spdpenr4k2)
-> 不好意思，之前的那个qq群ID（1021438316），不知道为啥搜不到😂
+## 网站配置
 
-微信群：刚建好了一个微信群，没有 qq 的可以用这个微信群
-![](https://www.yysuni.com/blogs/readme/343f2c62035b8e23.webp)
+长期站点配置主要保存在：
 
-tg 群：1月1号，才创建的 tg 群 https://t.me/public_blog_2025
+```text
+src/config/site-content.json
+```
 
+当前可通过网站配置界面维护的主要字段包括：
 
-应该主要是我自己亲自帮助你们遇到问题怎么办。（后续看看有没有好心人）
+- 导航品牌
+- SEO 标题
+- 页脚版权
+- 关于我
+- 关于网站
 
-希望多多的非程序员加入 blogger 行列，web blog 还是很好玩的，属于自己的 blog 世界。
+正式域名和搜索引擎收录开关不进入网站配置后台，而是集中保存在：
 
-游戏资产不一定属于你的，你只有**使用权**，但这个 blog **网站、内容、仓库一定是属于你的**
+```text
+src/config/site.ts
+```
 
-#### 特殊的导航 Card
+这样可以避免 Canonical、RSS、Sitemap 和 robots 使用不同地址。
 
-因为这个 Card 是全局都在的，所以放在了 `src/components` 目录
+## GitHub App 内容发布
 
-![](https://www.yysuni.com/blogs/readme/9780c38f886322fd.png)
+项目通过 GitHub App 写入文章、图片和配置。
 
-## Star History
+需要配置：
 
-<a href="https://www.star-history.com/#YYsuni/2025-blog-public&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=YYsuni/2025-blog-public&type=date&legend=top-left" />
- </picture>
-</a>
+- GitHub App
+- App ID
+- 仓库 Contents 写权限
+- App 安装范围
+- Private Key
+- 目标仓库与分支
+
+建议只授权当前仓库：
+
+```text
+zourichao/2026-blog-public
+```
+
+发布文章时，网站会根据 GitHub App 权限更新仓库内容，并在 `main` 分支生成新的 Commit。
+
+### Private Key 安全说明
+
+Private Key 属于敏感凭据，必须妥善保管。
+
+禁止：
+
+- 上传到 GitHub
+- 写入 README
+- 写入源码
+- 放入 `public` 目录
+- 截图公开
+- 通过聊天、邮件或群聊长期传播
+- 提交到任何公开仓库
+
+丢失后应在 GitHub App 页面删除旧密钥并重新生成。
+
+## 环境变量
+
+部署平台需要配置以下变量。
+
+| 变量名 | 用途 | 说明 |
+|---|---|---|
+| `NEXT_PUBLIC_GITHUB_OWNER` | GitHub 用户名或组织名 | 当前为 `zourichao` |
+| `NEXT_PUBLIC_GITHUB_REPO` | 目标仓库名 | 当前为 `2026-blog-public` |
+| `NEXT_PUBLIC_GITHUB_BRANCH` | 内容写入分支 | 当前为 `main` |
+| `NEXT_PUBLIC_GITHUB_APP_ID` | GitHub App ID | 可进入浏览器代码 |
+| `NEXT_PUBLIC_GITHUB_ENCRYPT_KEY` | 浏览器侧 PEM 缓存辅助配置 | 可留空 |
+| `BLOG_SLUG_KEY` | 文章 Slug 生成相关密钥 | 仅服务端使用 |
+
+注意：
+
+```text
+NEXT_PUBLIC_ 开头的变量会被打包到浏览器代码中。
+```
+
+因此其中不能存放：
+
+- GitHub App Private Key
+- Client Secret
+- Installation Token
+- Personal Access Token
+- 其他真正的秘密信息
+
+## 本地开发
+
+### 环境要求
+
+建议使用：
+
+- Node.js
+- pnpm
+- Git
+
+### 安装依赖
+
+```bash
+pnpm install
+```
+
+### 启动开发环境
+
+```bash
+pnpm dev
+```
+
+### Next.js 构建
+
+```bash
+pnpm run build
+```
+
+### OpenNext / Cloudflare 兼容构建
+
+```bash
+pnpm run build:cf
+```
+
+不要随意执行依赖升级或自动修复命令，尤其是：
+
+```bash
+npm audit fix
+pnpm update
+```
+
+升级前应先建立独立分支并验证构建结果。
+
+## EdgeOne 部署
+
+当前生产环境使用 Tencent EdgeOne。
+
+部署链路：
+
+```text
+GitHub main 更新
+→ EdgeOne 拉取仓库
+→ 安装依赖
+→ 执行 Next.js 构建
+→ 发布新版本
+→ www.999562.xyz 更新
+```
+
+推荐设置：
+
+- GitHub 仓库：`zourichao/2026-blog-public`
+- 生产分支：`main`
+- 正式域名：`www.999562.xyz`
+- 顶级域名：当前不解析
+- 环境变量：在 EdgeOne 项目设置中配置
+- 自动部署：监听 `main`
+
+修改环境变量后，需要重新部署，已有构建不会自动读取新变量。
+
+## 发布文章后的更新机制
+
+网站提示发布成功，只代表仓库写入成功。
+
+完整过程是：
+
+```text
+前台提交文章
+→ GitHub 产生 Commit
+→ EdgeOne 检测 main 更新
+→ 开始构建
+→ 构建成功并发布
+→ 正式网站内容更新
+```
+
+发布后应等待部署平台完成构建，再刷新正式网站。
+
+## SEO 与站点地址
+
+正式站点 Origin 集中定义在：
+
+```text
+src/config/site.ts
+```
+
+当前地址：
+
+```ts
+https://www.999562.xyz
+```
+
+以下功能统一使用该地址：
+
+- Metadata Base
+- Canonical URL
+- Open Graph URL
+- RSS
+- Sitemap
+- robots 中的 Sitemap 地址
+
+当前搜索引擎收录处于关闭状态：
+
+```text
+noindex, nofollow
+robots.txt: Disallow: /
+Sitemap: 空 URL 集合
+```
+
+开放收录前，应先确认正式内容、站长平台、域名解析和备案展示均已完成。
+
+## 404 页面
+
+项目已统一处理普通不存在页面和已删除文章。
+
+例如：
+
+```text
+/blog/deploy-test
+```
+
+会返回真实 HTTP 404，并显示统一中文页面：
+
+- 页面不存在
+- 返回首页
+- 查看文章
+
+不会使用 200 状态展示伪错误页面，也不会直接跳转到首页。
+
+## 主要目录
+
+```text
+public/
+├─ blogs/                 # 文章、配置和文章图片
+├─ images/                # 公共图片
+├─ pwa/                   # PWA 图标
+└─ manifest.json
+
+src/
+├─ app/                   # Next.js App Router 页面与路由
+├─ components/            # 公共组件
+├─ config/                # 站点配置
+├─ hooks/                 # React Hooks
+├─ layout/                # 页面布局
+├─ lib/                   # 公共逻辑
+└─ styles/                # 全局样式
+```
+
+重点文件：
+
+```text
+src/config/site-content.json
+```
+
+站点文案和可配置内容。
+
+```text
+src/config/site.ts
+```
+
+正式域名与搜索引擎收录开关。
+
+```text
+src/consts.ts
+```
+
+GitHub 仓库相关基础配置。
+
+```text
+src/app/write/
+```
+
+文章编辑与发布流程。
+
+```text
+src/app/rss.xml/route.ts
+```
+
+RSS Feed。
+
+```text
+src/app/sitemap.ts
+```
+
+Sitemap。
+
+```text
+src/app/robots.ts
+```
+
+robots.txt。
+
+```text
+src/app/not-found.tsx
+```
+
+统一 404 页面。
+
+## Git 工作流
+
+日常修改建议使用独立分支：
+
+```bash
+git switch -c feature/your-change
+```
+
+完成后：
+
+```text
+修改代码
+→ 本地检查
+→ 本地构建
+→ Commit
+→ Push 分支
+→ 创建 Pull Request
+→ 审核
+→ 合并 main
+→ EdgeOne 自动部署
+```
+
+不要直接在未经检查的情况下向 `main` 强制推送。
+
+禁止使用：
+
+```bash
+git push --force
+```
+
+除非明确了解其影响并有完整备份。
+
+## 维护建议
+
+- 每次较大修改前创建独立分支
+- 重要阶段创建 Git Tag 或备份分支
+- 提交前执行 `git diff --check`
+- 提交前检查修改文件范围
+- 合并前执行 `pnpm run build`
+- 涉及 EdgeOne 兼容性时执行 `pnpm run build:cf`
+- 不把密钥写入仓库
+- 不随意修改锁文件和依赖版本
+- 不机械全仓替换域名
+- 修改正式域名时同步检查 Metadata、RSS、Sitemap 和 robots
+- 删除文章时同步维护文章索引
+- 修改文章字段时同步检查编辑、列表、详情、预览和 RSS
+
+## License
+
+本仓库使用 MIT License，具体内容见：
+
+```text
+LICENSE
+```
