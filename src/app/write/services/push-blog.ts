@@ -7,11 +7,13 @@ import type { ImageItem } from '../types'
 import { getFileExt } from '@/lib/utils'
 import { toast } from 'sonner'
 import { formatDateTimeLocal } from '../stores/write-store'
+import { getBlogAuthor } from '@/lib/blog-author'
 
 export type PushBlogParams = {
 	form: {
 		slug: string
 		title: string
+		author?: string
 		md: string
 		tags: string[]
 		date?: string
@@ -120,8 +122,10 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 
 	// create blob for config.json
 	const dateStr = form.date || formatDateTimeLocal()
+	const author = getBlogAuthor(form.author)
 	const config = {
 		title: form.title,
+		author,
 		tags: form.tags,
 		date: dateStr,
 		summary: form.summary,
@@ -146,6 +150,7 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		{
 			slug: form.slug,
 			title: form.title,
+			author,
 			tags: form.tags,
 			date: dateStr,
 			summary: form.summary,

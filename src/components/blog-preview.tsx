@@ -6,10 +6,12 @@ import { useMarkdownRender } from '@/hooks/use-markdown-render'
 import { useSize } from '@/hooks/use-size'
 import { BlogSidebar } from '@/components/blog-sidebar'
 import { useConfigStore } from '@/app/(home)/stores/config-store'
+import { getBlogAuthor } from '@/lib/blog-author'
 
 type BlogPreviewProps = {
 	markdown: string
 	title: string
+	author?: string
 	tags: string[]
 	date: string
 	summary?: string
@@ -17,7 +19,7 @@ type BlogPreviewProps = {
 	slug?: string
 }
 
-export function BlogPreview({ markdown, title, tags, date, summary, cover, slug }: BlogPreviewProps) {
+export function BlogPreview({ markdown, title, author, tags, date, summary, cover, slug }: BlogPreviewProps) {
 	const { maxSM: isMobile } = useSize()
 	const { content, toc, loading } = useMarkdownRender(markdown)
 	const { siteContent } = useConfigStore()
@@ -43,7 +45,11 @@ export function BlogPreview({ markdown, title, tags, date, summary, cover, slug 
 						))}
 					</div>
 
-					<div className='text-secondary mt-3 text-center text-sm'>{date}</div>
+					<div className='text-secondary mt-3 flex items-center justify-center gap-2 text-center text-sm'>
+						<span>作者：{getBlogAuthor(author)}</span>
+						<span>·</span>
+						<span>{date}</span>
+					</div>
 
 					{summary && summaryInContent && <div className='text-secondary mt-6 cursor-text text-center text-sm'>“{summary}”</div>}
 

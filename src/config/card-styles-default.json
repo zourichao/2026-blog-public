@@ -22,7 +22,7 @@
 		"order": 4,
 		"offsetX": null,
 		"offsetY": null,
-		"enabled": true
+		"enabled": false
 	},
 	"calendarCard": {
 		"width": 350,
@@ -30,7 +30,7 @@
 		"order": 5,
 		"offsetX": null,
 		"offsetY": null,
-		"enabled": true
+		"enabled": false
 	},
 	"musicCard": {
 		"width": 293,
@@ -39,7 +39,7 @@
 		"order": 6,
 		"offsetX": null,
 		"offsetY": null,
-		"enabled": true
+		"enabled": false
 	},
 	"socialButtons": {
 		"width": 315,
@@ -103,6 +103,6 @@
 		"order": 11,
 		"offsetX": null,
 		"offsetY": null,
-		"enabled": false
+		"enabled": true
 	}
 }

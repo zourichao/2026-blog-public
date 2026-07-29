@@ -105,6 +105,19 @@ export default function Page() {
 
 			<div className='flex flex-col items-center justify-center px-6 pt-32 pb-12 max-sm:px-0'>
 				<div className='w-full max-w-[800px]'>
+					{!isEditMode && (
+						<div className='mb-12 grid gap-6 md:grid-cols-2'>
+							<section className='card relative p-6'>
+								<h2 className='mb-3 text-xl font-semibold'>关于我</h2>
+								<p className='text-secondary leading-relaxed'>{siteContent.aboutMe}</p>
+							</section>
+							<section className='card relative p-6'>
+								<h2 className='mb-3 text-xl font-semibold'>关于网站</h2>
+								<p className='text-secondary leading-relaxed'>{siteContent.aboutSite}</p>
+							</section>
+						</div>
+					)}
+
 					{isEditMode ? (
 						isPreviewMode ? (
 							<div className='space-y-6'>

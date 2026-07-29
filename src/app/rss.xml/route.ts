@@ -4,11 +4,11 @@ import path from 'node:path'
 import siteContent from '@/config/site-content.json'
 import blogIndex from '@/../public/blogs/index.json'
 import type { BlogIndexItem } from '@/app/blog/types'
+import { getBlogAuthor } from '@/lib/blog-author'
+import { OFFICIAL_SITE_ORIGIN, getOfficialSiteUrl } from '@/config/site'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yysuni.com'
 const FEED_PATH = '/rss.xml'
-const SITE_ORIGIN = SITE_URL.replace(/\/$/, '')
-const FEED_URL = `${SITE_ORIGIN}${FEED_PATH}`
+const FEED_URL = getOfficialSiteUrl(FEED_PATH)
 const PUBLIC_DIR = path.join(process.cwd(), 'public')
 
 const blogs = blogIndex as BlogIndexItem[]
@@ -37,7 +37,7 @@ const getMimeTypeFromUrl = (url?: string): string | null => {
 
 const buildEnclosure = (cover?: string): string | null => {
 	if (!cover) return null
-	const absoluteUrl = /^https?:\/\//.test(cover) ? cover : `${SITE_ORIGIN}${cover}`
+	const absoluteUrl = /^https?:\/\//.test(cover) ? cover : getOfficialSiteUrl(cover)
 	const type = getMimeTypeFromUrl(absoluteUrl)
 	if (!type) return null
 
@@ -63,9 +63,10 @@ const buildEnclosure = (cover?: string): string | null => {
 }
 
 const serializeItem = (item: BlogIndexItem): string => {
-	const link = `${SITE_ORIGIN}/blog/${item.slug}`
+	const link = getOfficialSiteUrl(`/blog/${encodeURIComponent(item.slug)}`)
 	const title = escapeXml(item.title || item.slug)
 	const description = wrapCdata(item.summary || '')
+	const author = escapeXml(getBlogAuthor(item.author))
 	const pubDate = new Date(item.date).toUTCString()
 	const categories = (item.tags || [])
 		.filter(Boolean)
@@ -80,6 +81,7 @@ const serializeItem = (item: BlogIndexItem): string => {
 			<link>${link}</link>
 			<guid isPermaLink="false">${escapeXml(link)}</guid>
 			<description>${description}</description>
+			<author>${author}</author>
 			<pubDate>${pubDate}</pubDate>
 			${categories}
 			${enclosure ?? ''}
@@ -94,7 +96,7 @@ export function GET(): Response {
 	const description = siteContent.meta?.description || 'Latest updates from 2025 Blog'
 
 	const items = blogs
-		.filter(item => item?.slug)
+		.filter(item => item?.slug && item.hidden !== true)
 		.map(serializeItem)
 		.join('')
 
@@ -102,7 +104,7 @@ export function GET(): Response {
 <rss version="2.0">
 	<channel xmlns:atom="http://www.w3.org/2005/Atom">
 		<title>${escapeXml(title)}</title>
-		<link>${SITE_ORIGIN}</link>
+		<link>${OFFICIAL_SITE_ORIGIN}</link>
 		<atom:link href="${FEED_URL}" rel="self" type="application/rss+xml" />
 		<description>${escapeXml(description)}</description>
 		<language>zh-CN</language>

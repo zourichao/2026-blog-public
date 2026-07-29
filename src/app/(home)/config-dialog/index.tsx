@@ -168,7 +168,7 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 		regenerateBubbles()
 		// Restore document title and meta if they were changed by preview
 		if (typeof document !== 'undefined') {
-			document.title = originalData.meta.title
+			document.title = originalData.seoTitle
 			const metaDescription = document.querySelector('meta[name="description"]')
 			if (metaDescription) {
 				metaDescription.setAttribute('content', originalData.meta.description)
@@ -208,7 +208,7 @@ export default function ConfigDialog({ open, onClose }: ConfigDialogProps) {
 
 		// Update document title
 		if (typeof document !== 'undefined') {
-			document.title = formData.meta.title
+			document.title = formData.seoTitle
 			const metaDescription = document.querySelector('meta[name="description"]')
 			if (metaDescription) {
 				metaDescription.setAttribute('content', formData.meta.description)

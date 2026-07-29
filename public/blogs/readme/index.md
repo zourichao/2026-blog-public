@@ -1,3 +1,5 @@
+> 本文为原开源项目的使用说明，内容及截图保留原貌，仅供了解项目原始功能与配置流程。原项目：YYsuni/2025-blog-public。
+
 > blog 前端网站（yysuni.com）已链接到 public 仓库
 
 该项目使用 Github App 管理项目内容，请保管好后续创建的 **Private key**，不要上传到公开网上。

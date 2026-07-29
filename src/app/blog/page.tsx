@@ -13,7 +13,6 @@ import ShortLineSVG from '@/svgs/short-line.svg'
 import { useBlogIndex, type BlogIndexItem } from '@/hooks/use-blog-index'
 import { useCategories } from '@/hooks/use-categories'
 import { useReadArticles } from '@/hooks/use-read-articles'
-import JuejinSVG from '@/svgs/juejin.svg'
 import { useAuthStore } from '@/hooks/use-auth'
 import { useConfigStore } from '@/app/(home)/stores/config-store'
 import { readFileAsText } from '@/lib/file-utils'
@@ -22,6 +21,7 @@ import { saveBlogEdits } from './services/save-blog-edits'
 import { Check } from 'lucide-react'
 import { BlogCoverHoverPreview, useBlogCoverHover } from './components/blog-cover-hover'
 import { CategoryModal } from './components/category-modal'
+import { getBlogAuthor } from '@/lib/blog-author'
 
 type DisplayMode = 'day' | 'week' | 'month' | 'year' | 'category'
 
@@ -435,6 +435,7 @@ export default function BlogPage() {
 												{it.title || it.slug}
 												{hasRead && <span className='text-secondary ml-2 text-xs'>[已阅读]</span>}
 											</div>
+											<span className='text-secondary shrink-0 text-xs'>{getBlogAuthor(it.author)}</span>
 											<div className='flex flex-wrap items-center gap-2 max-sm:hidden'>
 												{(it.tags || []).map(t => (
 													<span key={t} className='text-secondary text-sm'>
@@ -449,21 +450,6 @@ export default function BlogPage() {
 						</motion.div>
 					)
 				})}
-				{items.length > 0 && (
-					<div className='text-center'>
-						<motion.a
-							initial={{ opacity: 0, scale: 0.6 }}
-							animate={{ opacity: 1, scale: 1 }}
-							whileHover={{ scale: 1.05 }}
-							whileTap={{ scale: 0.95 }}
-							href='https://juejin.cn/user/2427311675422382/posts'
-							target='_blank'
-							className='card text-secondary static inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs'>
-							<JuejinSVG className='h-4 w-4' />
-							更多
-						</motion.a>
-					</div>
-				)}
 			</div>
 
 			<div className='pt-12'>

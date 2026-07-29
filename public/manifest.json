@@ -1,10 +1,29 @@
 {
-	"short_name": "",
-	"name": "",
+	"short_name": "999",
+	"name": "999562.xyz",
 	"start_url": ".",
 
 	"form_factor": "wide",
 
-	"icons": [],
+	"icons": [
+		{
+			"src": "/pwa/pwa-192x192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/pwa/pwa-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/pwa/pwa-maskable-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	],
 	"display": "standalone"
 }

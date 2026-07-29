@@ -24,6 +24,20 @@ export function MetaSection({ delay = 0 }: MetaSectionProps) {
 			<h2 className='text-sm'>元信息</h2>
 
 			<div className='mt-3 space-y-2'>
+				<div>
+					<label htmlFor='blog-author' className='text-secondary mb-1 block text-xs'>
+						作者
+					</label>
+					<input
+						id='blog-author'
+						type='text'
+						placeholder='作者'
+						className='bg-card w-full rounded-lg border px-3 py-2 text-sm'
+						value={form.author ?? ''}
+						onChange={e => updateForm({ author: e.target.value })}
+					/>
+				</div>
+
 				<textarea
 					placeholder='为这篇文章写一段简短摘要'
 					rows={2}

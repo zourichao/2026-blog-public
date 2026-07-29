@@ -4,21 +4,29 @@ import type { Metadata } from 'next'
 import Layout from '@/layout'
 import Head from '@/layout/head'
 import siteContent from '@/config/site-content.json'
+import { OFFICIAL_SITE_ORIGIN, SEARCH_ENGINE_ROBOTS, getOfficialSiteUrl } from '@/config/site'
 
 const {
-	meta: { title, description },
+	meta: { description },
+	seoTitle,
 	theme
 } = siteContent
 
 export const metadata: Metadata = {
-	title,
+	metadataBase: new URL(OFFICIAL_SITE_ORIGIN),
+	title: seoTitle,
 	description,
+	alternates: {
+		canonical: getOfficialSiteUrl('/')
+	},
+	robots: SEARCH_ENGINE_ROBOTS,
 	openGraph: {
-		title,
-		description
+		title: seoTitle,
+		description,
+		url: getOfficialSiteUrl('/')
 	},
 	twitter: {
-		title,
+		title: seoTitle,
 		description
 	}
 }
@@ -37,7 +45,7 @@ const htmlStyle = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang='en' suppressHydrationWarning style={htmlStyle}>
+		<html lang='zh-CN' suppressHydrationWarning style={htmlStyle}>
 			<Head />
 
 			<body>

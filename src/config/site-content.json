@@ -1,8 +1,8 @@
 {
 	"meta": {
-		"title": "YYsuni",
-		"description": "YYsuni 的个人博客，记录前端开发、探索、笔记。前端 UI 更新代码仓库。",
-		"username": "Suni"
+		"title": "999562.xyz",
+		"description": "999562博客，记录设计、技术与生活，分享产品思考、实践经验与个人作品。",
+		"username": "zourichao"
 	},
 	"theme": {
 		"colorBrand": "#2fcbe7",
@@ -45,21 +45,14 @@
 		{
 			"id": "github",
 			"type": "github",
-			"value": "https://github.com/yysuni",
+			"value": "https://github.com/zourichao",
 			"label": "Github",
-			"order": 3
-		},
-		{
-			"id": "juejin",
-			"type": "juejin",
-			"value": "https://juejin.cn/user/2427311675422382",
-			"label": "稀土掘金",
 			"order": 2
 		},
 		{
 			"id": "email",
 			"type": "email",
-			"value": "yysuni1001@gmail.com",
+			"value": "877a@163.com",
 			"label": "",
 			"order": 1
 		}
@@ -72,8 +65,13 @@
 	"currentHatIndex": 3,
 	"hatFlipped": false,
 	"enableChristmas": false,
+	"navBrand": "999562.xyz",
+	"seoTitle": "999562.xyz｜设计、技术与生活",
+	"footerCopyright": "© 2026 999562.xyz",
+	"aboutMe": "我是 zourichao，一名专注 App、智能硬件与 AI 应用的产品经理。这里记录产品设计、技术实践、项目作品与生活思考。",
+	"aboutSite": "999562.xyz 是 zourichao 的个人博客，主要记录设计、技术与生活，分享产品思考、项目实践、学习记录与个人作品。网站基于开源项目 2025-blog-public 搭建，并部署于腾讯云 EdgeOne。",
 	"beian": {
-		"text": "",
-		"link": ""
+		"text": "粤ICP备2026101935号-1",
+		"link": "https://beian.miit.gov.cn/"
 	}
 }

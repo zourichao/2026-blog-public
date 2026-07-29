@@ -1,5 +1,7 @@
 'use client'
 
+import { toast } from 'sonner'
+import { GITHUB_CONFIG } from '@/consts'
 import type { SiteContent } from '../../stores/config-store'
 import type { ArtImageUploads, BackgroundImageUploads, FileItem, SocialButtonImageUploads } from './types'
 import { FaviconAvatarUpload } from './favicon-avatar-upload'
@@ -101,7 +103,14 @@ export function SiteSettings({
 					<input
 						type='checkbox'
 						checked={formData.isCachePem ?? false}
-						onChange={e => setFormData({ ...formData, isCachePem: e.target.checked })}
+						onChange={e => {
+							const enabled = e.target.checked
+							if (enabled && !GITHUB_CONFIG.ENCRYPT_KEY.trim()) {
+								toast.error('未配置加密键，无法缓存私钥')
+								return
+							}
+							setFormData(prev => ({ ...prev, isCachePem: enabled }))
+						}}
 						className='accent-brand h-4 w-4 rounded'
 					/>
 					<span className='text-sm font-medium'>缓存PEM(已加密，但存在风险)</span>
