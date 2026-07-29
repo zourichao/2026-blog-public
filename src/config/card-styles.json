@@ -1,18 +1,18 @@
 {
 	"artCard": {
-		"width": 282,
-		"height": 182,
+		"width": 360,
+		"height": 200,
 		"order": 3,
-		"offsetX": -502,
-		"offsetY": 103,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"hiCard": {
 		"width": 360,
 		"height": 288,
 		"order": 1,
-		"offsetX": 117,
-		"offsetY": -295,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"clockCard": {
@@ -45,64 +45,64 @@
 		"width": 315,
 		"height": 48,
 		"order": 6,
-		"offsetX": -8,
-		"offsetY": 26,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"shareCard": {
-		"width": 289,
+		"width": 200,
 		"height": 180,
 		"order": 7,
-		"offsetX": -195,
-		"offsetY": 107,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"articleCard": {
-		"width": 284,
-		"height": 381,
+		"width": 266,
+		"height": 160,
 		"order": 8,
-		"offsetX": -194,
-		"offsetY": -295,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"writeButtons": {
 		"height": 42,
 		"width": 180,
 		"order": 8,
-		"offsetX": 131,
-		"offsetY": 125,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"navCard": {
-		"width": 276,
-		"height": 367,
+		"width": 280,
+		"height": 434,
 		"order": 2,
-		"offsetX": -496,
-		"offsetY": -290,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"likePosition": {
 		"width": 54,
 		"height": 54,
 		"order": 8,
-		"offsetX": 378,
-		"offsetY": 68,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	},
 	"hatCard": {
-		"width": 99,
-		"height": 105,
+		"width": 120,
+		"height": 120,
 		"order": 10,
-		"offsetX": -48,
-		"offsetY": -168,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": false
 	},
 	"beianCard": {
-		"width": 356,
-		"height": 55,
+		"width": 200,
+		"height": 60,
 		"order": 11,
-		"offsetX": 120,
-		"offsetY": 218,
+		"offsetX": null,
+		"offsetY": null,
 		"enabled": true
 	}
 }
