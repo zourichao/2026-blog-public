@@ -6,19 +6,20 @@ import Head from '@/layout/head'
 import siteContent from '@/config/site-content.json'
 
 const {
-	meta: { title, description },
+	meta: { description },
+	seoTitle,
 	theme
 } = siteContent
 
 export const metadata: Metadata = {
-	title,
+	title: seoTitle,
 	description,
 	openGraph: {
-		title,
+		title: seoTitle,
 		description
 	},
 	twitter: {
-		title,
+		title: seoTitle,
 		description
 	}
 }
