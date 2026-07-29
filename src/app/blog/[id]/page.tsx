@@ -1,97 +1,65 @@
-'use client'
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import blogIndex from '@/../public/blogs/index.json'
+import type { BlogIndexItem } from '@/app/blog/types'
+import siteContent from '@/config/site-content.json'
+import { OFFICIAL_SITE_NAME, SEARCH_ENGINE_ROBOTS, getOfficialSiteUrl } from '@/config/site'
+import { BlogPageClient } from './blog-page-client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import dayjs from 'dayjs'
-import { motion } from 'motion/react'
-import { BlogPreview } from '@/components/blog-preview'
-import { loadBlog, type BlogConfig } from '@/lib/load-blog'
-import { useReadArticles } from '@/hooks/use-read-articles'
-import LiquidGrass from '@/components/liquid-grass'
+type BlogPageProps = {
+	params: Promise<{ id: string }>
+}
 
-export default function Page() {
-	const params = useParams() as { id?: string | string[] }
-	const slug = Array.isArray(params?.id) ? params.id[0] : params?.id || ''
-	const router = useRouter()
-	const { markAsRead } = useReadArticles()
+const blogs = blogIndex as BlogIndexItem[]
 
-	const [blog, setBlog] = useState<{ config: BlogConfig; markdown: string; cover?: string } | null>(null)
-	const [error, setError] = useState<string | null>(null)
-	const [loading, setLoading] = useState<boolean>(true)
+function findBlog(slug: string): BlogIndexItem | undefined {
+	return blogs.find(blog => blog.slug === slug)
+}
 
-	useEffect(() => {
-		let cancelled = false
-		async function run() {
-			if (!slug) return
-			try {
-				setLoading(true)
-				const blogData = await loadBlog(slug)
+export const dynamicParams = false
 
-				if (!cancelled) {
-					setBlog(blogData)
-					setError(null)
-					markAsRead(slug)
-				}
-			} catch (e: any) {
-				if (!cancelled) setError(e?.message || '加载失败')
-			} finally {
-				if (!cancelled) setLoading(false)
-			}
-		}
-		run()
-		return () => {
-			cancelled = true
-		}
-	}, [slug, markAsRead])
+export function generateStaticParams(): Array<{ id: string }> {
+	return blogs.filter(blog => blog?.slug).map(blog => ({ id: blog.slug }))
+}
 
-	const title = useMemo(() => (blog?.config.title ? blog.config.title : slug), [blog?.config.title, slug])
-	const date = useMemo(() => dayjs(blog?.config.date).format('YYYY年 M月 D日'), [blog?.config.date])
-	const tags = blog?.config.tags || []
-
-	const handleEdit = () => {
-		router.push(`/write/${slug}`)
-	}
-
-	if (!slug) {
-		return <div className='text-secondary flex h-full items-center justify-center text-sm'>无效的链接</div>
-	}
-
-	if (loading) {
-		return <div className='text-secondary flex h-full items-center justify-center text-sm'>加载中...</div>
-	}
-
-	if (error) {
-		return <div className='flex h-full items-center justify-center text-sm text-red-500'>{error}</div>
-	}
+export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
+	const { id } = await params
+	const blog = findBlog(id)
 
 	if (!blog) {
-		return <div className='text-secondary flex h-full items-center justify-center text-sm'>文章不存在</div>
+		notFound()
 	}
 
-	return (
-		<>
-			<BlogPreview
-				markdown={blog.markdown}
-				title={title}
-				author={blog.config.author}
-				tags={tags}
-				date={date}
-				summary={blog.config.summary}
-				cover={blog.cover ? (blog.cover.startsWith('http') ? blog.cover : `${origin}${blog.cover}`) : undefined}
-				slug={slug}
-			/>
+	const title = `${blog.title || blog.slug}｜${OFFICIAL_SITE_NAME}`
+	const description = blog.summary?.trim() || siteContent.meta.description
+	const canonical = getOfficialSiteUrl(`/blog/${encodeURIComponent(blog.slug)}`)
 
-			<motion.button
-				initial={{ opacity: 0, scale: 0.6 }}
-				animate={{ opacity: 1, scale: 1 }}
-				whileHover={{ scale: 1.05 }}
-				whileTap={{ scale: 0.95 }}
-				onClick={handleEdit}
-				className='absolute top-4 right-6 rounded-xl border bg-white/60 px-6 py-2 text-sm backdrop-blur-sm transition-colors hover:bg-white/80 max-sm:hidden'>
-				编辑
-			</motion.button>
+	return {
+		title,
+		description,
+		alternates: {
+			canonical
+		},
+		robots: SEARCH_ENGINE_ROBOTS,
+		openGraph: {
+			title,
+			description,
+			url: canonical
+		},
+		twitter: {
+			title,
+			description
+		}
+	}
+}
 
-			{slug === 'liquid-grass' && <LiquidGrass />}
-		</>
-	)
+export default async function Page({ params }: BlogPageProps) {
+	const { id } = await params
+	const blog = findBlog(id)
+
+	if (!blog) {
+		notFound()
+	}
+
+	return <BlogPageClient slug={blog.slug} />
 }
