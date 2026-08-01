@@ -33,7 +33,8 @@ export default function HomePage() {
 				<HomeHero
 					username={siteContent.meta.username}
 					description={HERO_DESCRIPTION}
-					artSrc='/images/home/hero-brand-illustration.png'
+					desktopArtSrc='/images/home/hero-brand-desktop.png'
+					mobileArtSrc='/images/home/hero-brand-mobile.png'
 					githubUrl={github?.value}
 					email={email?.value}
 				/>

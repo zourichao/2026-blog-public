@@ -21,7 +21,7 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 	return (
 		<ul className='divide-y divide-slate-200/55 overflow-hidden rounded-xl border border-white/45 bg-white/[0.16]'>
 			{articles.map(article => {
-				const label = article.category?.trim() || article.tags[0]
+				const labels = article.tags.length > 0 ? article.tags : article.category?.trim() ? [article.category.trim()] : []
 
 				return (
 					<li key={article.slug}>
@@ -37,14 +37,22 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 							)}
 
 							<div className='min-w-0'>
-								{label && <span className='inline-flex rounded-md bg-sky-50/90 px-2 py-0.5 text-[11px] font-medium text-sky-700'>{label}</span>}
-								<h3 className='mt-1.5 line-clamp-2 text-sm leading-5 font-semibold text-slate-900 transition-colors group-hover:text-sky-700 motion-reduce:transition-none'>
+								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 transition-colors group-hover:text-sky-700 motion-reduce:transition-none'>
 									{article.title || article.slug}
 								</h3>
-								{article.summary && <p className='mt-1 line-clamp-2 hidden text-[13px] leading-5 text-slate-600 sm:block'>{article.summary}</p>}
 								<p className='mt-1 truncate text-xs text-slate-500'>
 									{getBlogAuthor(article.author)} · {formatDate(article.date)}
 								</p>
+								{labels.length > 0 && (
+									<div className='mt-1 flex flex-wrap gap-1' aria-label='文章标签'>
+										{labels.map(label => (
+											<span key={label} className='inline-flex rounded-md bg-sky-50/90 px-2 py-0.5 text-[11px] leading-4 font-medium text-sky-700'>
+												{label}
+											</span>
+										))}
+									</div>
+								)}
+								{article.summary && <p className='mt-1 line-clamp-1 hidden text-[13px] leading-5 text-slate-600 lg:block'>{article.summary}</p>}
 							</div>
 						</Link>
 					</li>
