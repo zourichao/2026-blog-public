@@ -5,6 +5,14 @@ import { INIT_DELAY } from '@/consts'
 import { useRef, useState } from 'react'
 import { createRichTextImportToken, insertRichTextImportToken, replaceRichTextImportToken } from '../lib/editor-insertion'
 import { shouldPreferPlainMarkdown } from '../lib/clipboard-intent'
+import {
+	captureWordClipboard,
+	dedupeWordClipboardImageFiles,
+	getWordImportFeedback,
+	hasDirectWordImageBinary,
+	isWordClipboardHtml,
+	logWordClipboardDiagnostic
+} from '../lib/word-clipboard-import'
 
 const defaultText = 'text'
 const RICH_HTML_PATTERN = /<(?:p|div|h[1-6]|ul|ol|li|a|table|img|blockquote|pre|code|strong|b|em|i|del|s|strike|br|hr|u|sub|sup)\b/i
@@ -159,8 +167,11 @@ export function WriteEditor() {
 		const clipboardData = e.clipboardData
 		const html = clipboardData.getData('text/html')
 		const plainText = clipboardData.getData('text/plain')
-		const imageFiles = collectClipboardImageFiles(clipboardData)
 		const hasRichHtml = RICH_HTML_PATTERN.test(html) || STYLED_INLINE_HTML_PATTERN.test(html) || OFFICE_HTML_PATTERN.test(html)
+		const isWordHtml = hasRichHtml && isWordClipboardHtml(html)
+		const wordClipboard = isWordHtml ? captureWordClipboard(clipboardData, html) : null
+		if (wordClipboard) logWordClipboardDiagnostic(wordClipboard.diagnostic)
+		const imageFiles = wordClipboard?.imageFiles || collectClipboardImageFiles(clipboardData)
 		const preservePlainMarkdown = imageFiles.length === 0 && shouldPreferPlainMarkdown(html, plainText)
 
 		// Preserve native paste for plain text and already-authored Markdown.
@@ -176,19 +187,20 @@ export function WriteEditor() {
 		const token = createRichTextImportToken()
 		const pending = insertRichTextImportToken(textarea.value, textarea.selectionStart, textarea.selectionEnd, token)
 		updateForm({ md: pending.value })
-		const addImportedFiles = (files: File[]) =>
-			addFilesWithMapping(files, () => useWriteStore.getState().form.md.includes(token))
+		const addImportedFiles = (files: File[]) => addFilesWithMapping(files, () => useWriteStore.getState().form.md.includes(token))
 		importingRef.current = true
 		setIsImporting(true)
 		const loadingToast = toast.loading('正在导入富文本并处理图片…')
 
 		try {
 			const clipboardImages = await import('../lib/clipboard-image-import')
+			let resolvedImageFiles = wordClipboard ? await dedupeWordClipboardImageFiles(wordClipboard.imageCandidates) : imageFiles
 			let markdown = ''
 			let localizedCount = 0
 			let externalCount = 0
 			let failedCount = 0
 			let complexTableCount = 0
+			let hasEmbeddedWordImageSource = false
 
 			if (hasRichHtml) {
 				const richText = await import('../lib/rich-text-import')
@@ -198,15 +210,23 @@ export function WriteEditor() {
 				}
 				markdown = converted.markdownTemplate
 				complexTableCount = converted.complexTableCount
+				hasEmbeddedWordImageSource = converted.images.some(image => image.kind === 'data' || image.kind === 'blob')
+
+				if (wordClipboard && resolvedImageFiles.length === 0 && wordClipboard.rtf) {
+					const wordRtf = await import('../lib/word-rtf-image-import')
+					const rtfResult = wordRtf.extractWordRtfRasterImages(wordClipboard.rtf)
+					resolvedImageFiles = wordRtf.selectWordRtfFilesForHtmlImages(rtfResult, converted.images)
+					wordRtf.logWordRtfImageDiagnostic(rtfResult, resolvedImageFiles.length)
+				}
 
 				if (converted.images.length > 0) {
-					const imported = await clipboardImages.importRichTextImages(converted.images, imageFiles, addImportedFiles)
+					const imported = await clipboardImages.importRichTextImages(converted.images, resolvedImageFiles, addImportedFiles)
 					markdown = richText.replaceRichTextImagePlaceholders(markdown, imported.replacements)
 					localizedCount = imported.localizedCount
 					externalCount = imported.externalCount
 					failedCount = imported.failedCount
-				} else if (imageFiles.length > 0) {
-					const imported = await clipboardImages.importStandaloneClipboardImages(imageFiles, addImportedFiles)
+				} else if (resolvedImageFiles.length > 0) {
+					const imported = await clipboardImages.importStandaloneClipboardImages(resolvedImageFiles, addImportedFiles)
 					const imageMarkdown = imported.results.map(result => result.markdown).join('\n\n')
 					markdown = [markdown, imageMarkdown].filter(Boolean).join('\n\n')
 					localizedCount = imported.localizedCount
@@ -216,7 +236,7 @@ export function WriteEditor() {
 
 				markdown = richText.normalizeMarkdownSpacing(markdown)
 			} else {
-				const imported = await clipboardImages.importStandaloneClipboardImages(imageFiles, addImportedFiles)
+				const imported = await clipboardImages.importStandaloneClipboardImages(resolvedImageFiles, addImportedFiles)
 				const imageMarkdown = imported.results.map(result => result.markdown).join('\n\n')
 				markdown = [plainText, imageMarkdown].filter(Boolean).join('\n\n')
 				localizedCount = imported.localizedCount
@@ -240,8 +260,17 @@ export function WriteEditor() {
 			}, 0)
 
 			toast.dismiss(loadingToast)
-			toast.success(imageImportMessage(localizedCount, externalCount, failedCount, hasRichHtml))
-			if (complexTableCount > 0) toast.info('复杂表格已转换为简化文本格式。')
+			const importMessage = imageImportMessage(localizedCount, externalCount, failedCount, hasRichHtml)
+			const toastOptions = complexTableCount > 0 ? { description: '复杂表格已转换为简化文本格式。' } : undefined
+			if (isWordHtml) {
+				const noUsableBinary = Boolean(wordClipboard && !hasDirectWordImageBinary(wordClipboard) && !hasEmbeddedWordImageSource)
+				const hasRtfRaster = Boolean(wordClipboard && (wordClipboard.diagnostic.rtf.pngCount > 0 || wordClipboard.diagnostic.rtf.jpegCount > 0))
+				const feedback = getWordImportFeedback({ localizedCount, failedCount, noUsableBinary, hasRtfRaster, fallbackMessage: importMessage })
+				if (feedback.level === 'warning') toast.warning(feedback.message, toastOptions)
+				else toast.success(feedback.message, toastOptions)
+			} else {
+				toast.success(importMessage, toastOptions)
+			}
 		} catch {
 			const fallback = plainText || '> 富文本导入失败：请重新粘贴，或改用纯文本粘贴。'
 			const currentValue = useWriteStore.getState().form.md
