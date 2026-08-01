@@ -11,3 +11,10 @@ export type PublishForm = {
 }
 
 export type ImageItem = { id: string; type: 'url'; url: string } | { id: string; type: 'file'; file: File; previewUrl: string; filename: string; hash?: string }
+
+export type ImageFileAddResult = {
+	originalIndex: number
+	item: Extract<ImageItem, { type: 'file' }> | null
+	status: 'added' | 'existing' | 'failed'
+	error?: string
+}

@@ -1,13 +1,41 @@
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { useWriteStore } from '../stores/write-store'
 import { INIT_DELAY } from '@/consts'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { createRichTextImportToken, insertRichTextImportToken, replaceRichTextImportToken } from '../lib/editor-insertion'
+import { shouldPreferPlainMarkdown } from '../lib/clipboard-intent'
 
 const defaultText = 'text'
+const RICH_HTML_PATTERN = /<(?:p|div|h[1-6]|ul|ol|li|a|table|img|blockquote|pre|code|strong|b|em|i|del|s|strike|br|hr|u|sub|sup)\b/i
+const STYLED_INLINE_HTML_PATTERN = /<(?:span|font)\b[^>]*(?:class\s*=\s*["'][^"']*Mso|style\s*=\s*["'][^"']*(?:font-|font:|text-decoration))/i
+const OFFICE_HTML_PATTERN = /<(?:o|v|w|st1):[a-z]/i
+
+function collectClipboardImageFiles(dataTransfer: DataTransfer): File[] {
+	const files = Array.from(dataTransfer.files || []).filter(file => file.type.startsWith('image/'))
+	const itemFiles = Array.from(dataTransfer.items || []).flatMap(item => {
+		if (!item.type.startsWith('image/')) return []
+		const file = item.getAsFile()
+		return file ? [file] : []
+	})
+	return files.length > 0 ? files : itemFiles
+}
+
+function imageImportMessage(localized: number, external: number, failed: number, richText: boolean): string {
+	if (external > 0 && failed > 0) {
+		return `内容已导入：${localized} 张图片已保存，${external} 张暂时保留为外部地址，${failed} 张无法读取，已在原位置标记。`
+	}
+	if (external > 0) return `内容已导入：${localized} 张图片已保存，${external} 张图片暂时保留为外部地址。`
+	if (failed > 0) return `内容已导入：${localized} 张图片成功，${failed} 张无法读取，已在原位置标记。`
+	if (localized > 0) return richText ? `已导入富文本，识别并添加 ${localized} 张图片。` : `已添加 ${localized} 张图片。`
+	return richText ? '已将富文本转换为 Markdown。' : '剪贴板中没有可导入的图片。'
+}
 
 export function WriteEditor() {
-	const { form, updateForm, images, addFiles } = useWriteStore()
+	const { form, updateForm, addFilesWithMapping } = useWriteStore()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
+	const importingRef = useRef(false)
+	const [isImporting, setIsImporting] = useState(false)
 
 	const insertText = (text: string) => {
 		const textarea = textareaRef.current
@@ -128,30 +156,111 @@ export function WriteEditor() {
 	}
 
 	const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-		const items = e.clipboardData.items
-		if (!items) return
+		const clipboardData = e.clipboardData
+		const html = clipboardData.getData('text/html')
+		const plainText = clipboardData.getData('text/plain')
+		const imageFiles = collectClipboardImageFiles(clipboardData)
+		const hasRichHtml = RICH_HTML_PATTERN.test(html) || STYLED_INLINE_HTML_PATTERN.test(html) || OFFICE_HTML_PATTERN.test(html)
+		const preservePlainMarkdown = imageFiles.length === 0 && shouldPreferPlainMarkdown(html, plainText)
 
-		const imageFiles: File[] = []
-		for (let i = 0; i < items.length; i++) {
-			const item = items[i]
-			if (item.type.startsWith('image/')) {
-				const file = item.getAsFile()
-				if (file) {
-					imageFiles.push(file)
-				}
-			}
+		// Preserve native paste for plain text and already-authored Markdown.
+		if (preservePlainMarkdown || (!hasRichHtml && imageFiles.length === 0)) return
+
+		e.preventDefault()
+		if (importingRef.current) {
+			toast.info('正在处理上一次粘贴，请稍候。')
+			return
 		}
 
-		if (imageFiles.length > 0) {
-			e.preventDefault()
+		const textarea = e.currentTarget
+		const token = createRichTextImportToken()
+		const pending = insertRichTextImportToken(textarea.value, textarea.selectionStart, textarea.selectionEnd, token)
+		updateForm({ md: pending.value })
+		const addImportedFiles = (files: File[]) =>
+			addFilesWithMapping(files, () => useWriteStore.getState().form.md.includes(token))
+		importingRef.current = true
+		setIsImporting(true)
+		const loadingToast = toast.loading('正在导入富文本并处理图片…')
 
-			const resultImages = await addFiles(imageFiles).catch(() => [])
+		try {
+			const clipboardImages = await import('../lib/clipboard-image-import')
+			let markdown = ''
+			let localizedCount = 0
+			let externalCount = 0
+			let failedCount = 0
+			let complexTableCount = 0
 
-			if (resultImages && resultImages.length > 0) {
-				// 为所有处理后的图片（包括新添加和已存在的）生成 markdown
-				const markdowns = resultImages.map(item => (item.type === 'url' ? `![](${item.url})` : `![](local-image:${item.id})`)).join('\n')
-				insertText(markdowns)
+			if (hasRichHtml) {
+				const richText = await import('../lib/rich-text-import')
+				const converted = richText.convertRichHtmlToMarkdown(html)
+				if (converted.markdownTemplate === richText.RICH_TEXT_IMPORT_FAILURE_PLACEHOLDER) {
+					throw new Error('富文本转换失败')
+				}
+				markdown = converted.markdownTemplate
+				complexTableCount = converted.complexTableCount
+
+				if (converted.images.length > 0) {
+					const imported = await clipboardImages.importRichTextImages(converted.images, imageFiles, addImportedFiles)
+					markdown = richText.replaceRichTextImagePlaceholders(markdown, imported.replacements)
+					localizedCount = imported.localizedCount
+					externalCount = imported.externalCount
+					failedCount = imported.failedCount
+				} else if (imageFiles.length > 0) {
+					const imported = await clipboardImages.importStandaloneClipboardImages(imageFiles, addImportedFiles)
+					const imageMarkdown = imported.results.map(result => result.markdown).join('\n\n')
+					markdown = [markdown, imageMarkdown].filter(Boolean).join('\n\n')
+					localizedCount = imported.localizedCount
+					externalCount = imported.externalCount
+					failedCount = imported.failedCount
+				}
+
+				markdown = richText.normalizeMarkdownSpacing(markdown)
+			} else {
+				const imported = await clipboardImages.importStandaloneClipboardImages(imageFiles, addImportedFiles)
+				const imageMarkdown = imported.results.map(result => result.markdown).join('\n\n')
+				markdown = [plainText, imageMarkdown].filter(Boolean).join('\n\n')
+				localizedCount = imported.localizedCount
+				externalCount = imported.externalCount
+				failedCount = imported.failedCount
 			}
+
+			if (!markdown.trim() && plainText) markdown = plainText
+			if (!markdown.trim()) throw new Error('剪贴板内容为空或无法读取')
+
+			const currentValue = useWriteStore.getState().form.md
+			const replacement = replaceRichTextImportToken(currentValue, token, markdown)
+			if (!replacement) throw new Error('导入位置已被移除')
+			useWriteStore.getState().updateForm({ md: replacement.value })
+
+			setTimeout(() => {
+				const currentTextarea = textareaRef.current
+				if (!currentTextarea) return
+				currentTextarea.focus()
+				currentTextarea.setSelectionRange(replacement.cursor, replacement.cursor)
+			}, 0)
+
+			toast.dismiss(loadingToast)
+			toast.success(imageImportMessage(localizedCount, externalCount, failedCount, hasRichHtml))
+			if (complexTableCount > 0) toast.info('复杂表格已转换为简化文本格式。')
+		} catch {
+			const fallback = plainText || '> 富文本导入失败：请重新粘贴，或改用纯文本粘贴。'
+			const currentValue = useWriteStore.getState().form.md
+			const replacement = replaceRichTextImportToken(currentValue, token, fallback)
+			if (replacement) {
+				useWriteStore.getState().updateForm({ md: replacement.value })
+				setTimeout(() => {
+					const currentTextarea = textareaRef.current
+					if (!currentTextarea) return
+					currentTextarea.focus()
+					currentTextarea.setSelectionRange(replacement.cursor, replacement.cursor)
+				}, 0)
+			}
+			toast.dismiss(loadingToast)
+			toast.error(replacement ? '富文本格式未能转换，已按纯文本粘贴。' : '导入位置已被移除，请重新粘贴。')
+		} finally {
+			toast.dismiss(loadingToast)
+			importingRef.current = false
+			setIsImporting(false)
 		}
 	}
 
@@ -185,6 +294,7 @@ export function WriteEditor() {
 				onChange={e => updateForm({ md: e.target.value })}
 				onKeyDown={handleKeyDown}
 				onPaste={handlePaste}
+				aria-busy={isImporting}
 			/>
 		</motion.div>
 	)

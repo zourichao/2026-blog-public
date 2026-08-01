@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { hashFileSHA256 } from '@/lib/file-utils'
 import { loadBlog } from '@/lib/load-blog'
 import { DEFAULT_BLOG_AUTHOR, getBlogAuthor } from '@/lib/blog-author'
-import type { PublishForm, ImageItem } from '../types'
+import type { PublishForm, ImageFileAddResult, ImageItem } from '../types'
 
 export const formatDateTimeLocal = (date: Date = new Date()): string => {
 	const pad = (n: number) => String(n).padStart(2, '0')
@@ -28,7 +28,9 @@ type WriteStore = {
 
 	// Image state
 	images: ImageItem[]
+	imageSession: number
 	addUrlImage: (url: string) => void
+	addFilesWithMapping: (files: FileList | File[], shouldApply?: () => boolean) => Promise<ImageFileAddResult[]>
 	addFiles: (files: FileList | File[]) => Promise<ImageItem[]>
 	deleteImage: (id: string) => void
 
@@ -72,6 +74,7 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 
 	// Image state
 	images: [],
+	imageSession: 0,
 	addUrlImage: url => {
 		const { images } = get()
 		const exists = images.some(it => it.type === 'url' && it.url === url)
@@ -82,57 +85,137 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 		const id = Math.random().toString(36).slice(2, 10)
 		set(state => ({ images: [{ id, type: 'url', url }, ...state.images] }))
 	},
-	addFiles: async (files: FileList | File[]) => {
-		const { images } = get()
-		const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
-		if (arr.length === 0) return []
-
-		const existingHashes = new Map<string, ImageItem>(
-			images
-				.filter((it): it is Extract<ImageItem, { type: 'file'; hash?: string }> => it.type === 'file' && (it as any).hash)
-				.map(it => [(it as any).hash as string, it])
-		)
-
-		const computed = await Promise.all(
-			arr.map(async file => {
-				const hash = await hashFileSHA256(file)
-				return { file, hash }
-			})
-		)
-
-		const seen = new Set<string>()
-		const unique = computed.filter(({ hash }) => {
-			if (existingHashes.has(hash)) return false
-			if (seen.has(hash)) return false
-			seen.add(hash)
-			return true
-		})
-
-		const resultImages: ImageItem[] = []
-
-		// 处理已存在的图片
-		for (const { hash } of computed) {
-			if (existingHashes.has(hash)) {
-				resultImages.push(existingHashes.get(hash)!)
+	addFilesWithMapping: async (files: FileList | File[], shouldApply?: () => boolean) => {
+		const inputFiles = Array.from(files)
+		if (inputFiles.length === 0) return []
+		const imageSession = get().imageSession
+		const canApply = () => {
+			if (get().imageSession !== imageSession) return false
+			try {
+				return shouldApply ? shouldApply() : true
+			} catch {
+				return false
 			}
 		}
 
-		// 处理新图片
-		if (unique.length > 0) {
-			const newItems: ImageItem[] = unique.map(({ file, hash }) => {
-				const id = Math.random().toString(36).slice(2, 10)
-				const previewUrl = URL.createObjectURL(file)
-				const filename = file.name
-				return { id, type: 'file', file, previewUrl, filename, hash }
-			})
+		const computed = await Promise.all(
+			inputFiles.map(async (file, originalIndex) => {
+				if (!file.type.startsWith('image/')) {
+					return { originalIndex, file, error: '不支持的文件类型' } as const
+				}
 
-			set(state => ({ images: [...newItems, ...state.images] }))
-			resultImages.push(...newItems)
-		} else if (resultImages.length === 0) {
-			toast.info('图片已存在，不重复添加')
+				try {
+					const hash = await hashFileSHA256(file)
+					return { originalIndex, file, hash } as const
+				} catch (error) {
+					return {
+						originalIndex,
+						file,
+						error: error instanceof Error ? error.message : '计算图片哈希失败'
+					} as const
+				}
+			})
+		)
+
+		const results: ImageFileAddResult[] = computed.map(result => ({
+			originalIndex: result.originalIndex,
+			item: null,
+			status: 'failed',
+			...('error' in result ? { error: result.error } : {})
+		}))
+		const successful = computed.filter(
+			(result): result is Extract<(typeof computed)[number], { hash: string }> => 'hash' in result
+		)
+
+		if (successful.length === 0) return results
+		if (!canApply()) {
+			for (const result of successful) {
+				results[result.originalIndex] = {
+					originalIndex: result.originalIndex,
+					item: null,
+					status: 'failed',
+					error: '图片导入已取消'
+				}
+			}
+			return results
 		}
 
-		return resultImages
+		set(state => {
+			if (state.imageSession !== imageSession || !canApply()) {
+				for (const result of successful) {
+					results[result.originalIndex] = {
+						originalIndex: result.originalIndex,
+						item: null,
+						status: 'failed',
+						error: '图片导入已取消'
+					}
+				}
+				return state
+			}
+
+			const fileItemsByHash = new Map<string, Extract<ImageItem, { type: 'file' }>>()
+			const usedIds = new Set(state.images.map(item => item.id))
+			const newItems: Extract<ImageItem, { type: 'file' }>[] = []
+
+			for (const item of state.images) {
+				if (item.type === 'file' && item.hash && !fileItemsByHash.has(item.hash)) {
+					fileItemsByHash.set(item.hash, item)
+				}
+			}
+
+			for (const result of successful) {
+				const existingItem = fileItemsByHash.get(result.hash)
+				if (existingItem) {
+					results[result.originalIndex] = {
+						originalIndex: result.originalIndex,
+						item: existingItem,
+						status: 'existing'
+					}
+					continue
+				}
+
+				try {
+					let id = Math.random().toString(36).slice(2, 10)
+					while (usedIds.has(id)) id = Math.random().toString(36).slice(2, 10)
+					usedIds.add(id)
+
+					const item: Extract<ImageItem, { type: 'file' }> = {
+						id,
+						type: 'file',
+						file: result.file,
+						previewUrl: URL.createObjectURL(result.file),
+						filename: result.file.name,
+						hash: result.hash
+					}
+
+					fileItemsByHash.set(result.hash, item)
+					newItems.push(item)
+					results[result.originalIndex] = {
+						originalIndex: result.originalIndex,
+						item,
+						status: 'added'
+					}
+				} catch (error) {
+					results[result.originalIndex] = {
+						originalIndex: result.originalIndex,
+						item: null,
+						status: 'failed',
+						error: error instanceof Error ? error.message : '创建图片预览失败'
+					}
+				}
+			}
+
+			return newItems.length > 0 ? { images: [...newItems, ...state.images] } : state
+		})
+
+		return results
+	},
+	addFiles: async (files: FileList | File[]) => {
+		const results = await get().addFilesWithMapping(files)
+		if (results.length > 0 && results.every(result => result.status === 'existing')) {
+			toast.info('图片已存在，不重复添加')
+		}
+		return results.flatMap(result => (result.item ? [result.item] : []))
 	},
 	deleteImage: id =>
 		set(state => {
@@ -158,9 +241,11 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 
 	// Load blog for editing
 	loadBlogForEdit: async (slug: string) => {
+		const loadSession = get().imageSession + 1
 		try {
-			set({ loading: true })
+			set({ loading: true, imageSession: loadSession })
 			const blog = await loadBlog(slug)
+			if (get().imageSession !== loadSession) return
 
 			// Parse images from markdown
 			const images: ImageItem[] = []
@@ -205,8 +290,9 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 				loading: false
 			})
 
-			toast.success('博客加载成功')
+			if (get().imageSession === loadSession) toast.success('博客加载成功')
 		} catch (err: any) {
+			if (get().imageSession !== loadSession) return
 			console.error('Failed to load blog:', err)
 			toast.error(err?.message || '加载博客失败')
 			set({ loading: false })
@@ -227,12 +313,13 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			URL.revokeObjectURL(cover.previewUrl)
 		}
 
-		set({
+		set(state => ({
 			mode: 'create',
 			originalSlug: null,
 			form: { ...initialForm, date: formatDateTimeLocal() },
 			images: [],
-			cover: null
-		})
+			cover: null,
+			imageSession: state.imageSession + 1
+		}))
 	}
 }))

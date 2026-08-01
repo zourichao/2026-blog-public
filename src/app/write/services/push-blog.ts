@@ -8,6 +8,7 @@ import { getFileExt } from '@/lib/utils'
 import { toast } from 'sonner'
 import { formatDateTimeLocal } from '../stores/write-store'
 import { getBlogAuthor } from '@/lib/blog-author'
+import { replaceLocalImageReferences, validateLocalImageReferences } from '../lib/local-image-validation'
 
 export type PushBlogParams = {
 	form: {
@@ -35,6 +36,8 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	if (mode === 'edit' && originalSlug && originalSlug !== form.slug) {
 		throw new Error('编辑模式下不支持修改 slug，请保持原 slug 不变')
 	}
+
+	validateLocalImageReferences(form.md, images, cover)
 
 	// 获取认证 token（自动从全局认证状态获取）
 	const token = await getAuthToken()
@@ -65,6 +68,7 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 
 	const uploadedHashes = new Set<string>()
 	let mdToUpload = form.md
+	const localImagePaths = new Map<string, string>()
 	let coverPath: string | undefined
 
 	// prepare tree items for all files
@@ -93,9 +97,7 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 				uploadedHashes.add(hash)
 			}
 
-			// replace placeholder in markdown
-			const placeholder = `local-image:${id}`
-			mdToUpload = mdToUpload.split(`(${placeholder})`).join(`(${publicPath})`)
+			localImagePaths.set(id, publicPath)
 
 			// set cover path if this is the cover
 			if (cover?.type === 'file' && cover.id === id) {
@@ -103,6 +105,7 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 			}
 		}
 	}
+	mdToUpload = replaceLocalImageReferences(mdToUpload, localImagePaths)
 
 	// handle external cover URL
 	if (cover?.type === 'url') {
