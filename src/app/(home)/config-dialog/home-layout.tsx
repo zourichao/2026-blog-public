@@ -39,11 +39,14 @@ export function HomeLayout({ cardStylesData, setCardStylesData, onClose }: HomeL
 	}
 
 	const handleReset = () => {
-		setCardStylesData(cardStylesDefault as CardStyles)
+		setCardStylesData(cardStylesDefault)
 	}
 
 	return (
 		<div className='overflow-x-auto'>
+			<div className='mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800'>
+				新版首页采用响应式布局，旧拖拽布局配置暂不生效。以下配置继续保留，便于后续兼容处理。
+			</div>
 			<div className='flex items-center justify-between'>
 				<div className='text-secondary text-sm'>（偏移代表相对中心的偏移）</div>
 				<div className='flex shrink-0 items-center gap-2 whitespace-nowrap'>
@@ -53,9 +56,9 @@ export function HomeLayout({ cardStylesData, setCardStylesData, onClose }: HomeL
 					<button
 						type='button'
 						onClick={handleStartManualLayout}
-						disabled={editing}
+						disabled
 						className='bg-card rounded-xl border px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50'>
-						{editing ? '主页正在编辑中' : '进入主页拖拽布局'}
+						新版首页暂不支持拖拽
 					</button>
 				</div>
 			</div>
