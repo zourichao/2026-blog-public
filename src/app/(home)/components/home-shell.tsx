@@ -15,7 +15,8 @@ export default function HomeShell({ children }: HomeShellProps) {
 				className='bg-primary fixed top-3 left-3 z-[100] -translate-y-20 rounded-xl px-4 py-2 text-sm text-white transition-transform focus:translate-y-0 motion-reduce:transition-none'>
 				跳到主要内容
 			</a>
-			<div className='mx-auto w-full max-w-[1440px] min-w-0 rounded-[28px] border border-white/75 bg-white/[0.24] p-2 shadow-[0_30px_90px_-62px_rgba(14,116,144,0.62)] backdrop-blur-2xl sm:rounded-[30px] sm:p-3 lg:p-6 xl:p-8'>
+
+			<div className='mx-auto w-full max-w-[1440px] min-w-0 overflow-hidden rounded-[24px] border border-white/75 bg-white/[0.24] shadow-[0_30px_90px_-62px_rgba(14,116,144,0.62)] backdrop-blur-2xl sm:rounded-[26px]'>
 				{children}
 			</div>
 		</div>
