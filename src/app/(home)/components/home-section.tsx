@@ -16,10 +16,10 @@ export default function HomeSection({ id, title, href, linkLabel, className, chi
 		<section
 			aria-labelledby={`${id}-title`}
 			className={cn(
-				'flex min-w-0 flex-col self-start rounded-[18px] border border-white/65 bg-white/[0.46] p-4 shadow-[0_16px_42px_-38px_rgba(15,23,42,0.38)] backdrop-blur-xl sm:p-5 lg:h-full lg:self-stretch',
+				'flex min-w-0  flex-col self-start rounded-[18px] border border-white/65 bg-white/[0.46] px-4 pt-2 pb-2 shadow-[0_16px_42px_-38px_rgba(15,23,42,0.38)] backdrop-blur-xl sm:px-5 sm:pt-2.5 sm:pb-1.2 lg:h-full lg:self-stretch',
 				className
 			)}>
-			<div className='mb-2.5 flex min-h-8 shrink-0 items-center justify-between gap-4 sm:mb-3'>
+			<div className='mb-0 flex min-h-8 shrink-0 items-center justify-between gap-4'>
 				<h2 id={`${id}-title`} className='text-base font-bold tracking-tight text-slate-900 sm:text-lg'>
 					{title}
 				</h2>

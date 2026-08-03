@@ -21,21 +21,37 @@ export default function HomeHeader({ brandName, iconSrc }: HomeHeaderProps) {
 	const [menuOpen, setMenuOpen] = useState(false)
 
 	return (
-		<header className='mb-4 rounded-[20px] border border-white/70 bg-white/[0.54] px-4 py-2.5 shadow-[0_12px_36px_-30px_rgba(29,78,216,0.42)] backdrop-blur-xl md:px-6 md:py-3 lg:mb-5 lg:rounded-[22px]'>
-			<div className='flex min-h-10 items-center justify-between gap-4'>
+<header
+	data-header-version='v17-reference-header'
+	className='relative z-[3]'
+	style={{
+		background:
+			'linear-gradient(135deg, #FAFCFE 0%, #F7FAFD 52%, #F3F8FD 100%)',
+		boxShadow: 'inset 0 -1px 0 rgba(203, 213, 225, 0.16)'
+	}}
+>
+
+			<div className='flex min-h-[64px] items-center justify-between gap-4 px-5 py-3 sm:px-7 md:min-h-[84px] md:px-9 md:py-4 lg:min-h-[82px] lg:px-11 xl:px-13'>
+					{/* 左侧 Logo 和右侧导航同时向两边靠近边缘 px-5  sm:px-7 md:px-9  lg:px-11  xl:px-13*/}
 				<Link
 					href='/'
-					className='focus-visible:ring-brand flex min-w-0 items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'>
-					<img src={iconSrc} alt='' width={40} height={40} className='size-10 shrink-0 rounded-xl shadow-sm' />
-					<span className='truncate text-lg font-semibold tracking-tight sm:text-xl'>{brandName}</span>
+					className='focus-visible:ring-brand flex min-w-0 items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none md:gap-4'>
+					<img
+						src={iconSrc}
+						alt=''
+						width={48}
+						height={48}
+						className='size-10 shrink-0 rounded-xl shadow-sm sm:size-11 md:size-12 md:rounded-[14px]'
+					/>
+					<span className='truncate text-lg font-semibold tracking-tight sm:text-xl md:text-[26px] md:leading-tight'>{brandName}</span>
 				</Link>
 
-				<nav aria-label='首页主导航' className='hidden items-center gap-1 md:flex'>
+				<nav aria-label='首页主导航' className='hidden items-center gap-1 md:flex lg:gap-2'>
 					{NAV_ITEMS.map(item => (
 						<Link
 							key={item.href}
 							href={item.href}
-							className='focus-visible:ring-brand hover:text-brand rounded-xl px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none'>
+							className='focus-visible:ring-brand hover:text-brand rounded-xl px-4 py-2.5 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none motion-reduce:transition-none lg:px-5 lg:text-base'>
 							{item.label}
 						</Link>
 					))}
@@ -55,8 +71,8 @@ export default function HomeHeader({ brandName, iconSrc }: HomeHeaderProps) {
 			<div
 				id='home-mobile-menu'
 				className={cn(
-					'grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none md:hidden',
-					menuOpen ? 'mt-3 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+					'grid overflow-hidden px-4 transition-[grid-template-rows,opacity] duration-200 motion-reduce:transition-none sm:px-6 md:hidden',
+					menuOpen ? 'grid-rows-[1fr] pb-3 opacity-100' : 'grid-rows-[0fr] opacity-0'
 				)}>
 				<nav aria-label='移动端首页导航' className='min-h-0 overflow-hidden'>
 					<div className='grid grid-cols-2 gap-2 border-t border-white/80 pt-3'>
