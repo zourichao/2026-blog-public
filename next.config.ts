@@ -34,20 +34,31 @@ const nextConfig: NextConfig = {
 		return config
 	},
 
-	async redirects() {
-		return [
-			{
-				source: '/zh',
-				destination: '/',
-				permanent: true
-			},
-			{
-				source: '/en',
-				destination: '/',
-				permanent: true
-			}
-		]
-	}
+async redirects() {
+	return [
+		// 本次改动：EdgeOne 默认域名可直接访问 → 永久跳转到正式域名，并保留原路径和查询参数。
+		{
+			source: '/:path*',
+			has: [
+				{
+					type: 'host',
+					value: '2026-blog-public-iwen7fga.edgeone.cool'
+				}
+			],
+			destination: 'https://www.999562.xyz/:path*',
+			statusCode: 301
+		},
+		{
+			source: '/zh',
+			destination: '/',
+			permanent: true
+		},
+		{
+			source: '/en',
+			destination: '/',
+			permanent: true
+		}
+	]
 }
 
 export default nextConfig
