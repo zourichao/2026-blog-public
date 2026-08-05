@@ -112,7 +112,7 @@ export default function Page() {
 								<p className='text-secondary leading-relaxed'>{siteContent.aboutMe}</p>
 							</section>
 							<section className='card relative p-6'>
-								<h2 className='mb-3 text-xl font-semibold'>关于网站</h2>
+								<h2 className='mb-3 text-xl font-semibold'>关于原型半径</h2>
 								<p className='text-secondary leading-relaxed'>{siteContent.aboutSite}</p>
 							</section>
 						</div>
@@ -182,7 +182,7 @@ export default function Page() {
 
 					<div className='mt-8 flex items-center justify-center gap-6'>
 						<motion.a
-							href='https://github.com/YYsuni/2025-blog-public'
+							href='https://github.com/zourichao/2026-blog-public'
 							target='_blank'
 							rel='noreferrer'
 							initial={{ opacity: 0, scale: 0.6 }}
