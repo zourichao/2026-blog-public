@@ -12,8 +12,20 @@ export type PushProjectsParams = {
 	imageItems?: Map<string, ImageItem>
 }
 
-export async function pushProjects(params: PushProjectsParams): Promise<void> {
+// 本次改动：Promise<void> → Promise<Project[]>，向页面返回已替换正式图片路径的项目数据。
+export async function pushProjects(params: PushProjectsParams): Promise<Project[]> {
 	const { projects, imageItems } = params
+
+	// 本次改动：允许 blob 地址直接写入 list.json → 保存前校验必须存在对应的原始 File。
+	const invalidProject = projects.find(project => {
+		if (!project.image.trim().startsWith('blob:')) return false
+		const imageItem = imageItems?.get(project.url)
+		return !imageItem || imageItem.type !== 'file'
+	})
+
+	if (invalidProject) {
+		throw new Error(`项目“${invalidProject.name}”的图片尚未完成上传，请重新选择图片后再保存`)
+	}
 
 	const token = await getAuthToken()
 
@@ -24,7 +36,6 @@ export async function pushProjects(params: PushProjectsParams): Promise<void> {
 	const commitMessage = `更新项目列表`
 
 	toast.info('正在准备文件...')
-
 	const treeItems: TreeItem[] = []
 	const uploadedHashes = new Set<string>()
 	let updatedProjects = [...projects]
@@ -37,7 +48,6 @@ export async function pushProjects(params: PushProjectsParams): Promise<void> {
 				const ext = getFileExt(imageItem.file.name)
 				const filename = `${hash}${ext}`
 				const publicPath = `/images/project/${filename}`
-
 				if (!uploadedHashes.has(hash)) {
 					const path = `public/images/project/${filename}`
 					const contentBase64 = await fileToBase64NoPrefix(imageItem.file)
@@ -50,10 +60,15 @@ export async function pushProjects(params: PushProjectsParams): Promise<void> {
 					})
 					uploadedHashes.add(hash)
 				}
-
-				updatedProjects = updatedProjects.map(p => (p.url === url ? { ...p, image: publicPath } : p))
+				updatedProjects = updatedProjects.map(project => (project.url === url ? { ...project, image: publicPath } : project))
 			}
 		}
+	}
+
+	// 本次改动：转换后不复核 → 二次拦截任何未成功替换的 blob 地址，禁止生成无效 list.json。
+	const unresolvedProject = updatedProjects.find(project => project.image.trim().startsWith('blob:'))
+	if (unresolvedProject) {
+		throw new Error(`项目“${unresolvedProject.name}”的图片上传结果无效，请重新选择图片后再保存`)
 	}
 
 	const projectsJson = JSON.stringify(updatedProjects, null, '\t')
@@ -64,7 +79,6 @@ export async function pushProjects(params: PushProjectsParams): Promise<void> {
 		type: 'blob',
 		sha: projectsBlob.sha
 	})
-
 	toast.info('正在创建文件树...')
 	const treeData = await createTree(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, treeItems, latestCommitSha)
 
@@ -75,5 +89,5 @@ export async function pushProjects(params: PushProjectsParams): Promise<void> {
 	await updateRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`, commitData.sha)
 
 	toast.success('发布成功！')
+	return updatedProjects
 }
-
