@@ -1,4 +1,13 @@
-import { toBase64Utf8, getRef, createTree, createCommit, updateRef, createBlob, type TreeItem } from '@/lib/github-client'
+import {
+	toBase64Utf8,
+	getRef,
+	createTree,
+	createCommit,
+	updateRef,
+	createBlob,
+	listRepoFilesRecursive,
+	type TreeItem
+} from '@/lib/github-client'
 import { fileToBase64NoPrefix, hashFileSHA256 } from '@/lib/file-utils'
 import { prepareBlogsIndex } from '@/lib/blog-index'
 import { getAuthToken } from '@/lib/auth'
@@ -9,6 +18,7 @@ import { toast } from 'sonner'
 import { formatDateTimeLocal } from '../stores/write-store'
 import { getBlogAuthor } from '@/lib/blog-author'
 import { replaceLocalImageReferences, validateLocalImageReferences } from '../lib/local-image-validation'
+import { getOrphanedArticleImagePaths } from '../lib/article-image-cleanup'
 
 export type PushBlogParams = {
 	form: {
@@ -32,7 +42,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	const { form, cover, images, mode = 'create', originalSlug } = params
 
 	if (!form?.slug) throw new Error('需要 slug')
-
 	if (mode === 'edit' && originalSlug && originalSlug !== form.slug) {
 		throw new Error('编辑模式下不支持修改 slug，请保持原 slug 不变')
 	}
@@ -45,7 +54,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	toast.info('正在获取分支信息...')
 	const refData = await getRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`)
 	const latestCommitSha = refData.sha
-
 	const basePath = `public/blogs/${form.slug}`
 	const commitMessage = mode === 'edit' ? `更新文章: ${form.slug}` : `新增文章: ${form.slug}`
 
@@ -58,7 +66,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 			allLocalImages.push({ img, id: img.id })
 		}
 	}
-
 	// add cover if local
 	if (cover?.type === 'file') {
 		allLocalImages.push({ img: cover, id: cover.id })
@@ -73,7 +80,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 
 	// prepare tree items for all files
 	const treeItems: TreeItem[] = []
-
 	// process all images
 	if (allLocalImages.length > 0) {
 		toast.info('正在上传图片...')
@@ -82,7 +88,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 			const ext = getFileExt(img.file.name)
 			const filename = `${hash}${ext}`
 			const publicPath = `/blogs/${form.slug}/${filename}`
-
 			if (!uploadedHashes.has(hash)) {
 				const path = `${basePath}/${filename}`
 				const contentBase64 = await fileToBase64NoPrefix(img.file)
@@ -98,7 +103,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 			}
 
 			localImagePaths.set(id, publicPath)
-
 			// set cover path if this is the cover
 			if (cover?.type === 'file' && cover.id === id) {
 				coverPath = publicPath
@@ -112,8 +116,30 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		coverPath = cover.url
 	}
 
-	toast.info('正在创建文件...')
+	// 本次改动：修改文章仅更新引用 → 同一 Commit 自动删除不再引用的旧封面和正文图片。
+	if (mode === 'edit') {
+		toast.info('正在检查旧图片...')
+		const existingFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, GITHUB_CONFIG.BRANCH)
+		const uploadedImagePaths = treeItems.flatMap(item => (item.sha && item.path.startsWith(`${basePath}/`) ? [item.path] : []))
+		const orphanedImagePaths = getOrphanedArticleImagePaths({
+			existingFiles,
+			markdown: mdToUpload,
+			coverPath,
+			slug: form.slug,
+			additionalKeepPaths: uploadedImagePaths
+		})
 
+		for (const path of orphanedImagePaths) {
+			treeItems.push({
+				path,
+				mode: '100644',
+				type: 'blob',
+				sha: null
+			})
+		}
+	}
+
+	toast.info('正在创建文件...')
 	// create blob for index.md
 	const mdBlob = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, toBase64Utf8(mdToUpload), 'base64')
 	treeItems.push({
@@ -122,7 +148,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		type: 'blob',
 		sha: mdBlob.sha
 	})
-
 	// create blob for config.json
 	const dateStr = form.date || formatDateTimeLocal()
 	const author = getBlogAuthor(form.author)
@@ -136,7 +161,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		hidden: form.hidden,
 		category: form.category
 	}
-
 	const configBlob = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, toBase64Utf8(JSON.stringify(config, null, 2)), 'base64')
 	treeItems.push({
 		path: `${basePath}/config.json`,
@@ -144,7 +168,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		type: 'blob',
 		sha: configBlob.sha
 	})
-
 	// prepare and create blob for blogs index
 	const indexJson = await prepareBlogsIndex(
 		token,
@@ -170,7 +193,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		type: 'blob',
 		sha: indexBlob.sha
 	})
-
 	// create tree
 	toast.info('正在创建文件树...')
 	const treeData = await createTree(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, treeItems, latestCommitSha)
@@ -182,6 +204,5 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	// update branch reference
 	toast.info('正在更新分支...')
 	await updateRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`, commitData.sha)
-
 	toast.success('发布成功！')
 }
