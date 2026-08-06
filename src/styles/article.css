@@ -8,8 +8,6 @@
 	overflow: hidden;
 }
 
-/* 本次改动：标题前显示 #、##、###、#### → 不再显示标题前缀；其他样式保持不变。 */
-
 /* Headings */
 .prose h1,
 .prose h2,
@@ -18,6 +16,11 @@
 	line-height: 1.25;
 	margin-top: 2em;
 	margin-bottom: 1.5em;
+
+	&::before {
+		content: '# ';
+		@apply text-brand/60;
+	}
 }
 .prose h1 {
 	font-size: 1.75rem;
@@ -28,14 +31,27 @@
 .prose h3 {
 	font-size: 1rem;
 	font-weight: 600;
+
+	&::before {
+		content: '## ';
+		@apply text-brand/60;
+	}
 }
 .prose h4 {
 	font-size: 0.85rem;
 	font-weight: 500;
+	&::before {
+		content: '### ';
+		@apply text-brand/60;
+	}
 }
 .prose h5 {
 	font-size: 0.75rem;
 	font-weight: 500;
+	&::before {
+		content: '#### ';
+		@apply text-brand/60;
+	}
 }
 
 /* Paragraph */
