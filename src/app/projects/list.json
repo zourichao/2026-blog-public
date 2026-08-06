@@ -2,7 +2,7 @@
 	{
 		"name": "原型半径",
 		"year": 2026,
-		"image": "blob:https://www.999562.xyz/d6781de6-07a4-4c29-aec4-c840da563dab",
+		"image": "/images/project/b5abba7a4dd8017a.png",
 		"url": "https://www.999562.xyz",
 		"description": "原型半径，是一个由产品经理独立构建的个人品牌与实践型内容系统，聚焦 App、智能硬件与 AI 应用。它以真实项目为起点，记录从问题洞察、原型验证到产品落地的完整过程，并将产品、设计与技术经验沉淀为可复用的方法和作品。",
 		"tags": [
@@ -12,6 +12,16 @@
 			"原型验证",
 			"Github",
 			"edgeone"
+		]
+	},
+	{
+		"name": "四合一口袋打印机APP",
+		"year": 2026,
+		"image": "blob:https://www.999562.xyz/b08404d4-eeed-4e1f-a393-84a7b32bb905",
+		"url": "https://axhub.im/ax9/ff73c73975a65c07/#sc=2",
+		"description": "面向海外市场的四合一口袋打印机及配套 App，支持照片、贴纸、纹身转印和热转印，覆盖图片编辑、设备连接、设备管理、打印控制与异常恢复、AI创作等",
+		"tags": [
+			"智能硬件、打印机 App、AI 创作、蓝牙连接、海外产品"
 		]
 	}
 ]
