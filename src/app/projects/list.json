@@ -17,7 +17,7 @@
 	{
 		"name": "四合一口袋打印机APP",
 		"year": 2026,
-		"image": "/images/project/4faeb1cb1868a173.png",
+		"image": "/images/project/78aa46829416bc5c.png",
 		"url": "https://axhub.im/ax9/ff73c73975a65c07/#sc=2",
 		"description": "面向海外市场的四合一口袋打印机及配套 App，支持照片、贴纸、纹身转印和热转印，覆盖图片编辑、设备连接、设备管理、打印控制与异常恢复、AI创作等",
 		"tags": [
@@ -37,16 +37,6 @@
 			"智能穿戴",
 			"多模态 AI",
 			"全球化 App"
-		]
-	},
-	{
-		"name": "1",
-		"year": 2026,
-		"image": "/images/project/ae3f81ad8e67fe2f.png",
-		"url": "4",
-		"description": "3",
-		"tags": [
-			"2"
 		]
 	}
 ]
