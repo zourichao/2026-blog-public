@@ -17,11 +17,40 @@
 	{
 		"name": "四合一口袋打印机APP",
 		"year": 2026,
-		"image": "blob:https://www.999562.xyz/b08404d4-eeed-4e1f-a393-84a7b32bb905",
+		"image": "/images/project/78aa46829416bc5c.png",
 		"url": "https://axhub.im/ax9/ff73c73975a65c07/#sc=2",
 		"description": "面向海外市场的四合一口袋打印机及配套 App，支持照片、贴纸、纹身转印和热转印，覆盖图片编辑、设备连接、设备管理、打印控制与异常恢复、AI创作等",
 		"tags": [
 			"智能硬件、打印机 App、AI 创作、蓝牙连接、海外产品"
+		]
+	},
+	{
+		"name": "DeepVoice 多模态 AI 智能穿戴 App",
+		"year": 2025,
+		"image": "/images/project/4faeb1cb1868a173.png",
+		"url": "https://axhub.im/ax9/16d61cc4473250ce/#sc=2",
+		"description": "多声声 / DeepVoice 是面向国内外市场的多模态 AI 智能穿戴 App，连接耳机、手表等智能设备，融合实时翻译、AI 助手、运动健康、睡眠监测与设备管理能力，为用户提供跨语言沟通和个人健康管理体验。",
+		"tags": [
+			"AI 实时翻译",
+			"运动健康",
+			"睡眠监测",
+			"智能穿戴",
+			"多模态 AI",
+			"全球化 App"
+		]
+	},
+	{
+		"name": "贝多多｜全资产记账管理 App",
+		"year": 2017,
+		"image": "/images/project/3b23bb897edd2797.png",
+		"url": "https://axhub.im/pro/0903622a5fee31e3/",
+		"description": "从 投资记账切入，逐步扩展为覆盖资产、负债、数据增长与内容运营的全资产管理 App",
+		"tags": [
+			"投资记账",
+			"全资产管理",
+			"数据驱动增长",
+			"用户留存",
+			"金融工具"
 		]
 	}
 ]
