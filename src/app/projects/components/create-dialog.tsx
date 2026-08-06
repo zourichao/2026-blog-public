@@ -10,7 +10,8 @@ import { DialogModal } from '@/components/dialog-modal'
 interface CreateDialogProps {
 	project: Project | null
 	onClose: () => void
-	onSave: (project: Project) => void
+	// 本次改动：仅返回项目数据 → 同时返回项目数据与待上传图片，确保首次新增时保留原始 File。
+	onSave: (project: Project, imageItem?: ImageItem) => void
 }
 
 export default function CreateDialog({ project, onClose, onSave }: CreateDialogProps) {
@@ -26,6 +27,8 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 	})
 	const [showImageDialog, setShowImageDialog] = useState(false)
 	const [tagsInput, setTagsInput] = useState('')
+	// 本次改动：未保存图片对象 → 保留 ImageItem，供页面保存时上传 GitHub。
+	const [selectedImageItem, setSelectedImageItem] = useState<ImageItem | null>(null)
 
 	useEffect(() => {
 		if (project) {
@@ -44,11 +47,14 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 			})
 			setTagsInput('')
 		}
+		setSelectedImageItem(null)
 	}, [project])
 
 	const handleImageSubmit = (image: ImageItem) => {
 		const imageUrl = image.type === 'url' ? image.url : image.previewUrl
-		setFormData({ ...formData, image: imageUrl })
+		// 本次改动：只保存 blob 预览地址 → 同时保存原始图片对象与预览地址。
+		setSelectedImageItem(image)
+		setFormData(prev => ({ ...prev, image: imageUrl }))
 	}
 
 	const handleTagsChange = (value: string) => {
@@ -57,7 +63,7 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 			.split(',')
 			.map(t => t.trim())
 			.filter(t => t)
-		setFormData({ ...formData, tags })
+		setFormData(prev => ({ ...prev, tags }))
 	}
 
 	const handleSubmit = () => {
@@ -71,7 +77,8 @@ export default function CreateDialog({ project, onClose, onSave }: CreateDialogP
 			return
 		}
 
-		onSave(formData)
+		// 本次改动：仅提交 formData → 同时提交待上传图片，避免 blob 地址进入 list.json。
+		onSave(formData, selectedImageItem || undefined)
 		onClose()
 		toast.success(project ? '更新成功' : '添加成功')
 	}
