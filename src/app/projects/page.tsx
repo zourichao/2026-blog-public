@@ -30,6 +30,12 @@ export default function Page() {
 		if (imageItem) {
 			setImageItems(prev => {
 				const newMap = new Map(prev)
+				// 本次改动：只新增当前 URL 映射 → 清理同一图片的旧 URL 映射，避免项目 URL 修改后出现残留键。
+				for (const [url, item] of newMap.entries()) {
+					if (item === imageItem && url !== updatedProject.url) {
+						newMap.delete(url)
+					}
+				}
 				newMap.set(updatedProject.url, imageItem)
 				return newMap
 			})
@@ -41,18 +47,35 @@ export default function Page() {
 		setIsCreateDialogOpen(true)
 	}
 
-	const handleSaveProject = (updatedProject: Project) => {
+	// 本次改动：仅接收项目数据 → 同时接收首次新增时选择的图片对象。
+	const handleSaveProject = (updatedProject: Project, imageItem?: ImageItem) => {
 		if (editingProject) {
 			const updated = projects.map(p => (p.url === editingProject.url ? updatedProject : p))
 			setProjects(updated)
 		} else {
-			setProjects([...projects, updatedProject])
+			setProjects(prev => [...prev, updatedProject])
+		}
+
+		if (imageItem) {
+			setImageItems(prev => {
+				const newMap = new Map(prev)
+				if (editingProject && editingProject.url !== updatedProject.url) {
+					newMap.delete(editingProject.url)
+				}
+				newMap.set(updatedProject.url, imageItem)
+				return newMap
+			})
 		}
 	}
 
 	const handleDelete = (project: Project) => {
 		if (confirm(`确定要删除 ${project.name} 吗？`)) {
 			setProjects(projects.filter(p => p.url !== project.url))
+			setImageItems(prev => {
+				const newMap = new Map(prev)
+				newMap.delete(project.url)
+				return newMap
+			})
 		}
 	}
 
@@ -79,24 +102,37 @@ export default function Page() {
 		setIsSaving(true)
 
 		try {
-			await pushProjects({
+			// 本次改动：忽略上传后的正式项目数据 → 使用 pushProjects 返回的 /images/project/... 正式地址同步页面状态。
+			const savedProjects = await pushProjects({
 				projects,
 				imageItems
 			})
 
-			setOriginalProjects(projects)
+			setProjects(savedProjects)
+			setOriginalProjects(savedProjects)
+			imageItems.forEach(imageItem => {
+				if (imageItem.type === 'file') {
+					URL.revokeObjectURL(imageItem.previewUrl)
+				}
+			})
 			setImageItems(new Map())
 			setIsEditMode(false)
 			toast.success('保存成功！')
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error('Failed to save:', error)
-			toast.error(`保存失败: ${error?.message || '未知错误'}`)
+			const message = error instanceof Error ? error.message : '未知错误'
+			toast.error(`保存失败: ${message}`)
 		} finally {
 			setIsSaving(false)
 		}
 	}
 
 	const handleCancel = () => {
+		imageItems.forEach(imageItem => {
+			if (imageItem.type === 'file') {
+				URL.revokeObjectURL(imageItem.previewUrl)
+			}
+		})
 		setProjects(originalProjects)
 		setImageItems(new Map())
 		setIsEditMode(false)
@@ -135,7 +171,7 @@ export default function Page() {
 			<div className='flex flex-col items-center justify-center px-6 pt-32 pb-12'>
 				{projects.length === 0 && <p className='text-secondary py-12 text-center text-sm'>项目内容整理中，敬请期待。</p>}
 				<div className='grid w-full max-w-[1200px] grid-cols-2 gap-6 max-md:grid-cols-1'>
-					{projects.map((project, index) => (
+					{projects.map(project => (
 						<ProjectCard key={project.url} project={project} isEditMode={isEditMode} onUpdate={handleUpdate} onDelete={() => handleDelete(project)} />
 					))}
 				</div>
