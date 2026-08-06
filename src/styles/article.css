@@ -5,64 +5,37 @@
 	letter-spacing: 0.03em;
 	font-size: 15px;
 	width: 100%;
+	overflow: hidden;
 }
 
-/* 本次改动：标题前显示 Markdown # 符号 → 使用品牌色短竖线作为标题装饰。 */
+/* 本次改动：标题前显示 #、##、###、#### → 不再显示标题前缀；其他样式保持不变。 */
 
 /* Headings */
 .prose h1,
 .prose h2,
-.prose h3,
-.prose h4,
-.prose h5,
-.prose h6 {
+.prose h3 {
 	font-weight: 700;
-	line-height: 1.35;
+	line-height: 1.25;
 	margin-top: 2em;
-	margin-bottom: 0.8em;
+	margin-bottom: 1.5em;
 }
-
 .prose h1 {
 	font-size: 1.75rem;
 }
-
 .prose h2 {
-	font-size: 1.5rem;
-}
-
-.prose h3 {
 	font-size: 1.25rem;
 }
-
-.prose h4 {
-	font-size: 1.1rem;
-}
-
-.prose h5 {
-	font-size: 1rem;
-}
-
-.prose h6 {
-	font-size: 0.95rem;
-}
-
-/* 保留品牌色标题识别，但不再显示 #、## 等 Markdown 字符 */
-.prose h2,
 .prose h3 {
-	position: relative;
-	padding-left: 0.85em;
+	font-size: 1rem;
+	font-weight: 600;
 }
-
-.prose h2::before,
-.prose h3::before {
-	content: '';
-	position: absolute;
-	left: 0;
-	top: 0.2em;
-	width: 3px;
-	height: 0.9em;
-	border-radius: 999px;
-	background: var(--color-brand);
+.prose h4 {
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+.prose h5 {
+	font-size: 0.75rem;
+	font-weight: 500;
 }
 
 /* Paragraph */
@@ -70,10 +43,10 @@
 	margin: 1.25em 0;
 }
 
-/* 保留正文重点词的品牌色，移除不自然的左右空隙 */
 .prose strong {
 	font-weight: 600;
 	color: var(--color-brand);
+	margin: 0 0.25em;
 }
 
 /* Links */
@@ -83,7 +56,6 @@
 	color: var(--color-blue-500);
 	font-weight: 500;
 }
-
 .prose a:hover {
 	opacity: 0.9;
 }
@@ -91,23 +63,15 @@
 /* Lists */
 .prose ul,
 .prose ol {
-	margin: 0.75em 0;
-	padding-left: 1.5em;
+	margin: 0.75em 0 0.75em 1.25em;
 }
-
 .prose ul {
-	list-style-type: disc;
+	list-style-type: square;
 }
-
 .prose ol {
-	list-style-type: decimal;
+	list-style-type: lower-roman;
 }
-
 .prose li {
-	margin: 0.35em 0;
-}
-
-.prose li > p {
 	margin: 0.35em 0;
 }
 
@@ -120,7 +84,6 @@
 	align-items: flex-start;
 	gap: 0.5em;
 }
-
 .prose li.task-list-item input[type='checkbox'] {
 	margin-top: 0.5em;
 	cursor: default;
@@ -135,9 +98,7 @@
 	border-radius: 6px;
 	font-size: 0.9em;
 	font-family: var(--font-mono);
-	letter-spacing: normal;
 }
-
 .prose pre {
 	border: 1px solid rgba(0, 0, 0, 0.06);
 	padding: 1rem 1.25rem;
@@ -147,10 +108,7 @@
 	line-height: 1.25em;
 	width: 100%;
 	display: block;
-	word-break: normal;
-	letter-spacing: normal;
 }
-
 .prose pre code {
 	background: transparent !important;
 	border: 0;
@@ -203,12 +161,13 @@
 
 /* Images */
 .prose img {
-	display: block;
-	max-width: 100%;
+	max-width: 40%;
 	margin: 1.5em auto;
 	height: auto;
 	border-radius: 12px;
 	border: 1px solid rgba(0, 0, 0, 0.1);
+
+	@apply max-sm:max-w-full;
 }
 
 /* Blockquote */
@@ -220,14 +179,6 @@
 	border-radius: 8px;
 }
 
-.prose blockquote > :first-child {
-	margin-top: 0;
-}
-
-.prose blockquote > :last-child {
-	margin-bottom: 0;
-}
-
 /* HR */
 .prose hr {
 	border: 0;
@@ -237,23 +188,17 @@
 
 /* Tables */
 .prose table {
-	display: block;
 	width: 100%;
-	max-width: 100%;
-	overflow-x: auto;
 	border-collapse: collapse;
 	font-size: 0.95em;
 	margin: 1em 0;
 }
-
 .prose th,
 .prose td {
 	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 	padding: 0.5em 0.6em;
 	text-align: left;
-	white-space: nowrap;
 }
-
 .prose thead th {
 	font-weight: 600;
 }
@@ -263,11 +208,7 @@
 	scroll-margin-top: 100px;
 }
 
-/* Embedded content */
 .prose iframe {
-	display: block;
-	width: 100%;
-	max-width: 100%;
 	border: 1px solid rgba(0, 0, 0, 0.08);
 	border-radius: 8px;
 }
