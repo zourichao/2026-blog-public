@@ -1,12 +1,9 @@
-import { createInstallationToken, getInstallationId, signAppJwt } from './github-client'
 import { GITHUB_CONFIG } from '@/consts'
-import { useAuthStore } from '@/hooks/use-auth'
 import { toast } from 'sonner'
 import { decrypt, encrypt } from './aes256-util'
 
 const GITHUB_TOKEN_CACHE_KEY = 'github_token'
 const GITHUB_PEM_CACHE_KEY = 'p_info'
-
 function getTokenFromCache(): string | null {
 	if (typeof sessionStorage === 'undefined') return null
 	try {
@@ -24,7 +21,6 @@ function saveTokenToCache(token: string): void {
 		console.error('Failed to save token to cache:', error)
 	}
 }
-
 function clearTokenCache(): void {
 	if (typeof sessionStorage === 'undefined') return
 	try {
@@ -33,7 +29,6 @@ function clearTokenCache(): void {
 		console.error('Failed to clear token cache:', error)
 	}
 }
-
 export async function getPemFromCache(): Promise<string | null> {
 	const encryptionKey = GITHUB_CONFIG.ENCRYPT_KEY
 	if (!encryptionKey.trim()) return null
@@ -47,7 +42,6 @@ export async function getPemFromCache(): Promise<string | null> {
 		return null
 	}
 }
-
 export async function savePemToCache(pem: string): Promise<void> {
 	const encryptionKey = GITHUB_CONFIG.ENCRYPT_KEY
 	if (!encryptionKey.trim()) {
@@ -63,7 +57,6 @@ export async function savePemToCache(pem: string): Promise<void> {
 		console.error('Failed to save pem to cache:', error)
 	}
 }
-
 function clearPemCache(): void {
 	if (typeof sessionStorage === 'undefined') return
 	try {
@@ -81,7 +74,6 @@ export function clearAllAuthCache(): void {
 export async function hasAuth(): Promise<boolean> {
 	return !!getTokenFromCache() || !!(await getPemFromCache())
 }
-
 /**
  * 统一的认证 Token 获取
  * 自动处理缓存、签发等逻辑
@@ -95,15 +87,19 @@ export async function getAuthToken(): Promise<string> {
 		return cachedToken
 	}
 
+	// 本次改动：顶层静态引入 use-auth/github-client → 真正获取 Token 时再动态加载，拆除 auth → github-client → use-auth → auth 的模块初始化循环。
+	const { useAuthStore } = await import('@/hooks/use-auth')
+
 	// 2. 获取私钥（从缓存）
 	const privateKey = useAuthStore.getState().privateKey
 	if (!privateKey) {
 		throw new Error('需要先设置私钥。请使用 useAuth().setPrivateKey()')
 	}
 
+	const { signAppJwt, getInstallationId, createInstallationToken } = await import('./github-client')
+
 	toast.info('正在签发 JWT...')
 	const jwt = signAppJwt(GITHUB_CONFIG.APP_ID, privateKey)
-
 	toast.info('正在获取安装信息...')
 	const installationId = await getInstallationId(jwt, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO)
 

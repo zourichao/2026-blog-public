@@ -1,5 +1,6 @@
 import { GITHUB_CONFIG } from '@/consts'
 import { getAuthToken } from '@/lib/auth'
+import { readPublicTextFileFromRepo } from '@/lib/github-public'
 import { createCommit, createTree, getRef, readTextFileFromRepo, updateRef, type TreeItem } from '@/lib/github-client'
 
 export type CategoryUsage = Record<string, number>
@@ -89,6 +90,27 @@ async function loadRepositoryState(token: string, ref: string) {
 	return { categories, index }
 }
 
+async function readPublicRequiredFile(path: string): Promise<string> {
+	const content = await readPublicTextFileFromRepo(
+		GITHUB_CONFIG.OWNER,
+		GITHUB_CONFIG.REPO,
+		path,
+		GITHUB_CONFIG.BRANCH
+	)
+	if (content === null) throw new Error(`缺少必要文件：${path}`)
+	return content
+}
+
+async function loadPublicRepositoryState() {
+	const [categoriesText, indexText] = await Promise.all([
+		readPublicRequiredFile('public/blogs/categories.json'),
+		readPublicRequiredFile('public/blogs/index.json')
+	])
+	const categories = parseCategoriesFile(categoriesText)
+	const index = parseBlogIndex(indexText)
+	return { categories, index }
+}
+
 function assertCategoryNameAllowed(name: string) {
 	if (RESERVED_CATEGORY_NAMES.has(name)) {
 		throw new Error(`“${name}”是系统保留名称，请使用其他分类名称`)
@@ -151,9 +173,8 @@ async function prepareArticleCategoryUpdates(
 }
 
 export async function getCategoryManagementSnapshot(): Promise<CategoryManagementSnapshot> {
-	const token = await getAuthToken()
-	const refData = await getRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`)
-	const { categories, index } = await loadRepositoryState(token, refData.sha)
+	// 本次改动：打开“管理分类”也必须先有私钥 → 分类列表、文章数和异常分类通过公开 GitHub 目标分支匿名读取。
+	const { categories, index } = await loadPublicRepositoryState()
 	return buildSnapshot(categories, index)
 }
 
