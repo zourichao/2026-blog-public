@@ -1,34 +1,5 @@
 [
   {
-    "slug": "data-dashboard",
-    "title": "数据大屏中的地图渲染",
-    "author": "Suni",
-    "tags": [
-      "3D",
-      "Threejs",
-      "科幻"
-    ],
-    "date": "2026-04-08T11:58",
-    "summary": "尝试做一个好看的3D科幻地图",
-    "cover": "/blogs/data-dashboard/18dace32db7bfa4f.webp",
-    "hidden": false,
-    "category": ""
-  },
-  {
-    "slug": "daily-note",
-    "title": "任务清单软件",
-    "author": "Suni",
-    "tags": [
-      "开发",
-      "开源"
-    ],
-    "date": "2026-01-23T09:56",
-    "summary": "一款极简的任务清单",
-    "cover": "/blogs/daily-note/899dca52074bfa0c.webp",
-    "hidden": false,
-    "category": "开源"
-  },
-  {
     "slug": "2026",
     "title": " 原型半径：让产品思考抵达可验证的现实",
     "author": "zourichao",
@@ -38,34 +9,5 @@
     "cover": "/blogs/2026/35b9330b20cec981.webp",
     "hidden": false,
     "category": ""
-  },
-  {
-    "slug": "readme",
-    "title": "2025 Blog 的使用引导",
-    "author": "Suni",
-    "tags": [
-      "开源"
-    ],
-    "date": "2025-11-16T08:00",
-    "summary": "2025-blog-public 项目的使用说明以及注意事项",
-    "cover": "/blogs/readme/9532a65cc32ca5eb.png",
-    "hidden": false,
-    "category": ""
-  },
-  {
-    "slug": "game-again",
-    "title": "又折腾一次游戏的记录心得",
-    "author": "Suni",
-    "tags": [
-      "笔记",
-      "心得",
-      "游戏",
-      "学习"
-    ],
-    "date": "2025-11-14T08:00",
-    "summary": "游戏难，又总会悸动",
-    "cover": "/blogs/game-again/4425a1ea5cd869ec.jpg",
-    "hidden": false,
-    "category": "总结"
   }
 ]
