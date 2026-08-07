@@ -1,6 +1,6 @@
 import { GITHUB_CONFIG } from '@/consts'
 import { getAuthToken } from '@/lib/auth'
-import { readPublicTextFileFromRepo } from '@/lib/github-public'
+import { readPreferredTextFileFromRepo } from '@/lib/github-public'
 import { createCommit, createTree, getRef, readTextFileFromRepo, updateRef, type TreeItem } from '@/lib/github-client'
 
 export type CategoryUsage = Record<string, number>
@@ -90,8 +90,8 @@ async function loadRepositoryState(token: string, ref: string) {
 	return { categories, index }
 }
 
-async function readPublicRequiredFile(path: string): Promise<string> {
-	const content = await readPublicTextFileFromRepo(
+async function readPreferredRequiredFile(path: string): Promise<string> {
+	const content = await readPreferredTextFileFromRepo(
 		GITHUB_CONFIG.OWNER,
 		GITHUB_CONFIG.REPO,
 		path,
@@ -101,10 +101,10 @@ async function readPublicRequiredFile(path: string): Promise<string> {
 	return content
 }
 
-async function loadPublicRepositoryState() {
+async function loadPreferredRepositoryState() {
 	const [categoriesText, indexText] = await Promise.all([
-		readPublicRequiredFile('public/blogs/categories.json'),
-		readPublicRequiredFile('public/blogs/index.json')
+		readPreferredRequiredFile('public/blogs/categories.json'),
+		readPreferredRequiredFile('public/blogs/index.json')
 	])
 	const categories = parseCategoriesFile(categoriesText)
 	const index = parseBlogIndex(indexText)
@@ -173,8 +173,8 @@ async function prepareArticleCategoryUpdates(
 }
 
 export async function getCategoryManagementSnapshot(): Promise<CategoryManagementSnapshot> {
-	// 本次改动：打开“管理分类”也必须先有私钥 → 分类列表、文章数和异常分类通过公开 GitHub 目标分支匿名读取。
-	const { categories, index } = await loadPublicRepositoryState()
+	// 本次改动：已认证时优先使用认证 REST API；未认证时用 GitHub Raw 读取分类列表、文章数和异常分类。
+	const { categories, index } = await loadPreferredRepositoryState()
 	return buildSnapshot(categories, index)
 }
 

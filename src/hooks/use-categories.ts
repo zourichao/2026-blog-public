@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import { GITHUB_CONFIG } from '@/consts'
-import { readPublicTextFileFromRepo } from '@/lib/github-public'
+import { readPreferredTextFileFromRepo } from '@/lib/github-public'
 
 export type CategoriesConfig = {
 	categories: string[]
@@ -32,8 +32,8 @@ const fetchCategoriesUrl = async (url: string): Promise<CategoriesConfig> => {
 
 async function fetchRepositoryCategories(): Promise<CategoriesConfig> {
 	try {
-		// 本次改动：读取分类也要求 getAuthToken/私钥 → 公开仓库分类直接匿名读取 GitHub 目标分支，仅写操作才认证。
-		const content = await readPublicTextFileFromRepo(
+		// 已认证时优先走认证 REST API；未认证时走 GitHub Raw，不再使用匿名 REST API 配额。
+		const content = await readPreferredTextFileFromRepo(
 			GITHUB_CONFIG.OWNER,
 			GITHUB_CONFIG.REPO,
 			'public/blogs/categories.json',
@@ -47,7 +47,7 @@ async function fetchRepositoryCategories(): Promise<CategoriesConfig> {
 	}
 }
 
-// 本次改动：写作页严格读取 GitHub 目标分支，但只读请求不再依赖私钥；失败时仍显式报错，不回退生产旧分类。
+// 写作页严格读取 GitHub 目标分支；认证时使用高配额 REST API，未认证时使用 Raw，不回退生产旧分类。
 export function useCategories(options: UseCategoriesOptions = {}) {
 	const { preferRepository = false } = options
 	const key = preferRepository
