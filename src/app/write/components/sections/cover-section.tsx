@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
+import { normalizeCoverImageToWebP } from '../../lib/image-webp-normalize'
 import { useWriteStore } from '../../stores/write-store'
 
 type CoverSectionProps = {
@@ -12,11 +13,45 @@ type CoverSectionProps = {
 export function CoverSection({ delay = 0 }: CoverSectionProps) {
 	const { images, setCover, cover, addFiles } = useWriteStore()
 	const fileInputRef = useRef<HTMLInputElement>(null)
-
 	const coverPreviewUrl = cover ? (cover.type === 'url' ? cover.url : cover.previewUrl) : null
+
+	// 本次改动：封面原图直接 addFiles → 先逐张转换为最大尺寸 400×300、WebP Q90，再进入现有图片列表与 setCover 链路。
+	const addCoverFiles = async (files: FileList | File[]) => {
+		const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'))
+		if (imageFiles.length === 0) {
+			toast.error('请选择图片文件')
+			return
+		}
+
+		const normalizedFiles: File[] = []
+		let failedCount = 0
+		for (const file of imageFiles) {
+			try {
+				normalizedFiles.push(await normalizeCoverImageToWebP(file))
+			} catch (error) {
+				failedCount += 1
+				console.error('封面图片转换失败:', error)
+			}
+		}
+
+		if (normalizedFiles.length === 0) {
+			toast.error('封面图片转换为 WebP 失败')
+			return
+		}
+
+		const resultImages = await addFiles(normalizedFiles)
+		if (resultImages.length > 0) {
+			// 使用第一个成功加入图片列表的图片作为封面
+			setCover(resultImages[0])
+			toast.success(failedCount > 0 ? `已设置封面，${failedCount} 张图片转换失败` : '已设置封面')
+			return
+		}
+
+		toast.error('封面图片加入列表失败')
+	}
+
 	const handleCoverDrop = async (e: React.DragEvent<HTMLDivElement>) => {
 		e.preventDefault()
-
 		// 处理从图片列表中拖入的情况
 		const md = e.dataTransfer.getData('text/markdown') || e.dataTransfer.getData('text/plain') || ''
 		const m = /!\[\]\(([^)]+)\)/.exec(md.trim())
@@ -29,8 +64,8 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 			} else {
 				foundItem = images.find(it => it.type === 'url' && it.url === target)
 			}
-
 			if (foundItem) {
+				// 本次改动：图片列表中的现有图片再次转码 → 直接设置为封面，避免 WebP 二次有损压缩。
 				setCover(foundItem)
 				toast.success('已设置封面')
 
@@ -46,12 +81,7 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 				return
 			}
 
-			const resultImages = await addFiles(imageFiles as unknown as FileList)
-			if (resultImages && resultImages.length > 0) {
-				// 使用第一个图片作为封面
-				setCover(resultImages[0])
-				toast.success('已设置封面')
-			}
+			await addCoverFiles(imageFiles)
 			return
 		}
 	}
@@ -64,17 +94,11 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 		setCover(null)
 		toast.success('已删除封面')
 	}
-
 	const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = e.target.files
 		if (!files || files.length === 0) return
 
-		const resultImages = await addFiles(files)
-		if (resultImages && resultImages.length > 0) {
-			// 使用第一个图片作为封面
-			setCover(resultImages[0])
-			toast.success('已设置封面')
-		}
+		await addCoverFiles(files)
 
 		// 重置 input 以便可以选择相同的文件
 		e.target.value = ''
@@ -82,6 +106,7 @@ export function CoverSection({ delay = 0 }: CoverSectionProps) {
 	return (
 		<motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay }} className='card relative'>
 			<h2 className='text-sm'>封面</h2>
+			{/* 本次改动：选择/拖入封面后直接进入图片列表 → 先转换为最大尺寸 400×300、WebP Q90，再进入图片列表。 */}
 			<input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={handleFileChange} />
 			<div
 				className='bg-card relative mt-3 h-[150px] overflow-hidden rounded-xl border'

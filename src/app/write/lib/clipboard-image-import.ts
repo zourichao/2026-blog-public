@@ -286,7 +286,7 @@ async function addResolvedFiles(
 	)
 	if (pending.length === 0) return output
 
-	// 本次改动：原始图片直接进入 addFilesWithMapping → 在图片匹配完成后逐张归一化为 1000x750 内、WebP Q88，再进入现有哈希/去重/local-image 链路。
+	// 本次改动：原始图片直接进入 addFilesWithMapping → 在图片匹配完成后逐张归一化为最大宽度 1000、高度不限、WebP Q88，再进入现有哈希/去重/local-image 链路。
 	// 逐张处理避免手机端同时解码多张大图造成内存峰值，同时保持 Word 多图的原始顺序；单张转换失败只标记该图片，不中断其他图片。
 	const normalizedPending: Array<{ originalIndex: number; file: File }> = []
 	for (const entry of pending) {
