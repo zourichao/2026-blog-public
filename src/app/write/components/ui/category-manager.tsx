@@ -10,9 +10,9 @@ import {
 	deleteCategory,
 	getCategoryManagementSnapshot,
 	renameCategory,
+	updateCategoriesJson,
 	type CategoryManagementSnapshot
 } from '../../services/manage-categories'
-
 type CategoryManagerProps = {
 	open: boolean
 	onClose: () => void
@@ -21,7 +21,6 @@ type CategoryManagerProps = {
 }
 
 const EMPTY_SNAPSHOT: CategoryManagementSnapshot = { categories: [], usage: {}, orphanCategories: {} }
-
 export function CategoryManager({ open, onClose, onCategoriesChanged, onCategoryRemap }: CategoryManagerProps) {
 	const [mounted, setMounted] = useState(false)
 	const [loading, setLoading] = useState(false)
@@ -33,7 +32,9 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 	const [editingValue, setEditingValue] = useState('')
 	const [deletingCategory, setDeletingCategory] = useState<string | null>(null)
 	const [replacementCategory, setReplacementCategory] = useState('')
-
+	// 本次改动：分类只能逐项维护 → 增加 categories.json 高级编辑状态，用于批量新增和调整显示顺序。
+	const [jsonEditorOpen, setJsonEditorOpen] = useState(false)
+	const [jsonText, setJsonText] = useState('')
 	useEffect(() => setMounted(true), [])
 
 	useEffect(() => {
@@ -44,7 +45,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 			document.body.style.overflow = previousOverflow
 		}
 	}, [open])
-
 	useEffect(() => {
 		if (!open) return
 		let active = true
@@ -56,6 +56,8 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 		setEditingCategory(null)
 		setDeletingCategory(null)
 		setReplacementCategory('')
+		setJsonEditorOpen(false)
+		setJsonText('')
 		getCategoryManagementSnapshot()
 			.then(data => {
 				if (!active) return
@@ -77,7 +79,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 		// 打开弹窗时强制从 GitHub 目标分支读取一次最新分类和文章使用量。
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [open])
-
 	useEffect(() => {
 		if (!open) return
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -86,7 +87,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 		document.addEventListener('keydown', handleKeyDown)
 		return () => document.removeEventListener('keydown', handleKeyDown)
 	}, [open, onClose, saving])
-
 	const deletingUsage = deletingCategory ? snapshot.usage[deletingCategory] ?? 0 : 0
 	const replacementOptions = useMemo(
 		() => [
@@ -96,13 +96,11 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 		[snapshot.categories, deletingCategory]
 	)
 	const orphanEntries = useMemo(() => Object.entries(snapshot.orphanCategories), [snapshot.orphanCategories])
-
 	const applySnapshot = (next: CategoryManagementSnapshot) => {
 		setSnapshot(next)
 		setLoadError(null)
 		onCategoriesChanged(next.categories)
 	}
-
 	const handleReload = async () => {
 		if (loading || saving) return
 		setSnapshot(EMPTY_SNAPSHOT)
@@ -111,6 +109,8 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 		setEditingCategory(null)
 		setDeletingCategory(null)
 		setReplacementCategory('')
+		setJsonEditorOpen(false)
+		setJsonText('')
 		try {
 			const data = await getCategoryManagementSnapshot()
 			setSnapshot(data)
@@ -123,7 +123,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 			setLoading(false)
 		}
 	}
-
 	const handleAdd = async () => {
 		if (!newCategory.trim() || saving || loading || loadError) return
 		setSaving(true)
@@ -138,7 +137,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 			setSaving(false)
 		}
 	}
-
 	const handleRename = async () => {
 		if (!editingCategory || !editingValue.trim() || saving || loadError) return
 		setSaving(true)
@@ -157,7 +155,6 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 			setSaving(false)
 		}
 	}
-
 	const handleDelete = async () => {
 		if (!deletingCategory || saving || loadError) return
 		setSaving(true)
@@ -175,9 +172,31 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 			setSaving(false)
 		}
 	}
-
+	// 本次改动：调整顺序需要去 GitHub 手改文件 → 在管理弹窗中直接生成当前 categories.json，并保留原列表作为并发校验基线。
+	const handleOpenJsonEditor = () => {
+		if (loading || saving || loadError) return
+		setEditingCategory(null)
+		setDeletingCategory(null)
+		setReplacementCategory('')
+		setJsonText(JSON.stringify({ categories: snapshot.categories }, null, 2))
+		setJsonEditorOpen(true)
+	}
+	const handleSaveJson = async () => {
+		if (!jsonEditorOpen || !jsonText.trim() || loading || saving || loadError) return
+		setSaving(true)
+		try {
+			const result = await updateCategoriesJson(jsonText, snapshot.categories)
+			applySnapshot(result)
+			setJsonText(JSON.stringify({ categories: result.categories }, null, 2))
+			setJsonEditorOpen(false)
+			toast.success('categories.json 已保存')
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '保存 categories.json 失败')
+		} finally {
+			setSaving(false)
+		}
+	}
 	if (!mounted || !open) return null
-
 	return createPortal(
 		<div className='fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]' onMouseDown={() => !saving && onClose()}>
 			<div
@@ -200,10 +219,44 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 						<X className='h-4 w-4' />
 					</button>
 				</div>
-
-				{/* 本次改动：加载失败后可能继续显示旧分类 → 错误时清空旧列表、显示失败状态，并提供重新加载入口。 */}
+				{/* 本次改动：只有逐项管理 → 增加 JSON 高级编辑区；进入后替换列表视图，避免与编辑/删除操作同时进行。 */}
 				<div className='mt-4 max-h-[50vh] space-y-2 overflow-y-auto pr-1'>
-					{loading ? (
+					{jsonEditorOpen ? (
+						<div className='space-y-3'>
+							<div className='rounded-xl border border-blue-500/20 bg-blue-500/5 p-3'>
+								<div className='text-sm font-medium'>编辑 categories.json</div>
+								<p className='text-secondary mt-1 text-xs'>可直接新增分类或调整数组顺序。删除、改名已有分类请返回列表使用对应功能，避免产生文章分类脏数据。</p>
+							</div>
+							<textarea
+								autoFocus
+								spellCheck={false}
+								value={jsonText}
+								disabled={saving}
+								onChange={event => setJsonText(event.target.value)}
+								className='bg-card min-h-[260px] w-full resize-y rounded-xl border px-3 py-3 font-mono text-xs leading-5 outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50'
+							/>
+							<div className='flex items-center justify-between gap-3'>
+								<p className='text-secondary text-[11px]'>保存前会校验 JSON、重复项、保留名称及 GitHub 最新分类状态。</p>
+								<div className='flex shrink-0 gap-2'>
+									<button
+										type='button'
+										disabled={saving}
+										onClick={() => setJsonEditorOpen(false)}
+										className='text-secondary rounded-lg px-3 py-2 text-xs hover:bg-black/5 disabled:opacity-40'>
+										取消
+									</button>
+									<button
+										type='button'
+										disabled={saving || !jsonText.trim()}
+										onClick={() => void handleSaveJson()}
+										className='bg-brand flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'>
+										{saving && <Loader2 className='h-3.5 w-3.5 animate-spin' />}
+										保存 JSON
+									</button>
+								</div>
+							</div>
+						</div>
+					) : loading ? (
 						<div className='text-secondary flex items-center justify-center gap-2 py-10 text-sm'>
 							<Loader2 className='h-4 w-4 animate-spin' />
 							正在读取 GitHub 分类...
@@ -288,9 +341,8 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 						})
 					)}
 				</div>
-
 				{/* 本次改动：文章里的孤儿分类完全不可见 → 显示异常分类及使用文章数，但不自动修改历史文章。 */}
-				{!loading && !loadError && orphanEntries.length > 0 && (
+				{!jsonEditorOpen && !loading && !loadError && orphanEntries.length > 0 && (
 					<div className='mt-4 rounded-xl border border-amber-500/25 bg-amber-500/5 p-3'>
 						<div className='flex items-start gap-2'>
 							<AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-amber-600' />
@@ -308,8 +360,7 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 						</div>
 					</div>
 				)}
-
-				{deletingCategory && !loading && !loadError && (
+				{!jsonEditorOpen && deletingCategory && !loading && !loadError && (
 					<div className='mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-3'>
 						<div className='text-sm font-medium'>删除“{deletingCategory}”？</div>
 						{deletingUsage > 0 ? (
@@ -347,31 +398,42 @@ export function CategoryManager({ open, onClose, onCategoriesChanged, onCategory
 						</div>
 					</div>
 				)}
-
-				<div className='mt-4 border-t pt-4'>
-					<div className='text-secondary mb-2 text-xs'>添加分类</div>
-					<div className='flex gap-2'>
-						<input
-							value={newCategory}
-							disabled={loading || saving || Boolean(loadError)}
-							onChange={event => setNewCategory(event.target.value)}
-							onKeyDown={event => {
-								if (event.key === 'Enter') void handleAdd()
-							}}
-							placeholder='输入新分类名称'
-							className='bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50'
-						/>
-						<button
-							type='button'
-							disabled={loading || saving || Boolean(loadError) || !newCategory.trim()}
-							onClick={() => void handleAdd()}
-							className='bg-brand flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'>
-							{saving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <Plus className='h-3.5 w-3.5' />}
-							添加
-						</button>
+				{/* 本次改动：只能逐项新增 → 保留原添加入口，并增加“编辑 JSON”高级入口用于批量新增和排序。 */}
+				{!jsonEditorOpen && (
+					<div className='mt-4 border-t pt-4'>
+						<div className='mb-2 flex items-center justify-between gap-3'>
+							<div className='text-secondary text-xs'>添加分类</div>
+							<button
+								type='button'
+								disabled={loading || saving || Boolean(loadError)}
+								onClick={handleOpenJsonEditor}
+								className='text-brand rounded-lg px-2.5 py-1.5 text-xs hover:bg-blue-500/10 disabled:cursor-not-allowed disabled:opacity-40'>
+								编辑 JSON
+							</button>
+						</div>
+						<div className='flex gap-2'>
+							<input
+								value={newCategory}
+								disabled={loading || saving || Boolean(loadError)}
+								onChange={event => setNewCategory(event.target.value)}
+								onKeyDown={event => {
+									if (event.key === 'Enter') void handleAdd()
+								}}
+								placeholder='输入新分类名称'
+								className='bg-card min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50'
+							/>
+							<button
+								type='button'
+								disabled={loading || saving || Boolean(loadError) || !newCategory.trim()}
+								onClick={() => void handleAdd()}
+								className='bg-brand flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40'>
+								{saving ? <Loader2 className='h-3.5 w-3.5 animate-spin' /> : <Plus className='h-3.5 w-3.5' />}
+								添加
+							</button>
+						</div>
+						{loadError && <p className='mt-2 text-xs text-red-500'>请先重新加载分类，成功后才能继续修改。</p>}
 					</div>
-					{loadError && <p className='mt-2 text-xs text-red-500'>请先重新加载分类，成功后才能继续修改。</p>}
-				</div>
+				)}
 			</div>
 		</div>,
 		document.body
