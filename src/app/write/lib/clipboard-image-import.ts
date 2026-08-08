@@ -1,4 +1,5 @@
 import type { ImageFileAddResult, ImageItem } from '../types'
+import { normalizeImageToWebP } from './image-webp-normalize'
 import { RICH_TEXT_IMAGE_FAILURE_PLACEHOLDER, sanitizeImageAlt, type RichTextImageDescriptor } from './rich-text-import'
 
 export const CLIPBOARD_IMAGE_LIMITS = {
@@ -10,7 +11,6 @@ export const CLIPBOARD_IMAGE_LIMITS = {
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
 const REMOTE_IMPORT_CONCURRENCY = 4
-
 type FileImageItem = Extract<ImageItem, { type: 'file' }>
 type AddFilesWithMapping = (files: File[]) => Promise<ImageFileAddResult[]>
 
@@ -25,7 +25,6 @@ type ImageLimitState = {
 }
 
 class ImageImportLimitError extends Error {}
-
 export type ImportedImageResult = {
 	originalIndex: number
 	item: FileImageItem | null
@@ -46,7 +45,6 @@ export type ClipboardImageImportResult = {
 function normalizeMimeType(type: string): string {
 	return type.split(';', 1)[0].trim().toLowerCase()
 }
-
 function extensionForMime(type: string): string | null {
 	switch (normalizeMimeType(type)) {
 		case 'image/png':
@@ -65,7 +63,6 @@ function extensionForMime(type: string): string | null {
 function isAllowedImageFile(file: Blob): boolean {
 	return file.size > 0 && ALLOWED_IMAGE_MIME_TYPES.has(normalizeMimeType(file.type))
 }
-
 function markdownAlt(alt: string): string {
 	return sanitizeImageAlt(alt).replace(/\\/g, '\\\\').replace(/\[/g, '\\[').replace(/]/g, '\\]')
 }
@@ -78,12 +75,10 @@ function externalImageMarkdown(alt: string, url: string): string {
 	const safeDestination = url.replace(/</g, '%3C').replace(/>/g, '%3E').replace(/\s/g, '%20')
 	return `![${markdownAlt(alt)}](<${safeDestination}>)`
 }
-
 function isPrivateNetworkHostname(hostname: string): boolean {
 	const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, '')
 	if (normalized === 'localhost' || normalized.endsWith('.localhost') || normalized.endsWith('.local')) return true
 	if (normalized === '::' || normalized === '::1' || /^(?:fc|fd|fe[89ab])/i.test(normalized)) return true
-
 	const embeddedIpv4 = normalized.match(/(?:^|:)(\d{1,3}(?:\.\d{1,3}){3})$/)?.[1]
 	const ipv4 = embeddedIpv4 || (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized) ? normalized : '')
 	if (!ipv4) return false
@@ -102,7 +97,6 @@ function isPrivateNetworkHostname(hostname: string): boolean {
 		first >= 224
 	)
 }
-
 function isSafeExternalImageUrl(value: string): boolean {
 	const source = value.trim()
 	if (/^https?:\/\//i.test(source)) {
@@ -115,7 +109,6 @@ function isSafeExternalImageUrl(value: string): boolean {
 	if (/^(?:\/|\.\/|\.\.\/)(?!\/)/.test(source)) return true
 	return false
 }
-
 function containsSensitiveQuery(value: string): boolean {
 	try {
 		const parsed = new URL(value, 'https://rich-text-import.invalid')
@@ -130,7 +123,6 @@ function containsSensitiveQuery(value: string): boolean {
 	}
 	return false
 }
-
 function normalizedFilename(value: string | undefined): string {
 	if (!value) return ''
 	const withoutQuery = value.split(/[?#]/, 1)[0]
@@ -141,7 +133,6 @@ function normalizedFilename(value: string | undefined): string {
 		return tail.trim().toLowerCase()
 	}
 }
-
 function createPastedFile(blob: Blob, originalIndex: number): File {
 	const mime = normalizeMimeType(blob.type)
 	const extension = extensionForMime(mime)
@@ -152,7 +143,6 @@ function createPastedFile(blob: Blob, originalIndex: number): File {
 function ensureNamedImageFile(file: File, originalIndex: number): File {
 	return file.name.trim() ? file : createPastedFile(file, originalIndex)
 }
-
 async function fetchBlobWithTimeout(url: string, maxBytes = CLIPBOARD_IMAGE_LIMITS.maxImageBytes): Promise<Blob> {
 	if (maxBytes <= 0) throw new ImageImportLimitError('单次粘贴图片总大小超过 50 MB')
 	const limitMessage = maxBytes < CLIPBOARD_IMAGE_LIMITS.maxImageBytes ? '单次粘贴图片总大小超过 50 MB' : '图片超过 10 MB'
@@ -167,13 +157,11 @@ async function fetchBlobWithTimeout(url: string, maxBytes = CLIPBOARD_IMAGE_LIMI
 		if (!response.ok) throw new Error('图片下载失败')
 		const contentLength = Number(response.headers.get('content-length') || 0)
 		if (contentLength > maxBytes) throw new ImageImportLimitError(limitMessage)
-
 		if (!response.body) {
 			const blob = await response.blob()
 			if (blob.size > maxBytes) throw new ImageImportLimitError(limitMessage)
 			return blob
 		}
-
 		const reader = response.body.getReader()
 		const chunks: ArrayBuffer[] = []
 		let receivedBytes = 0
@@ -194,13 +182,11 @@ async function fetchBlobWithTimeout(url: string, maxBytes = CLIPBOARD_IMAGE_LIMI
 		} finally {
 			reader.releaseLock()
 		}
-
 		return new Blob(chunks, { type: normalizeMimeType(response.headers.get('content-type') || '') })
 	} finally {
 		globalThis.clearTimeout(timer)
 	}
 }
-
 async function sourceToFile(descriptor: RichTextImageDescriptor, maxDownloadBytes: number): Promise<ResolvedImage> {
 	if (descriptor.kind === 'unsupported') return { kind: 'failed', error: '图片来源无法读取' }
 	if (descriptor.kind === 'local') return { kind: 'failed', error: 'Word 图片未能与剪贴板文件匹配' }
@@ -209,7 +195,6 @@ async function sourceToFile(descriptor: RichTextImageDescriptor, maxDownloadByte
 			? { kind: 'external', url: descriptor.src }
 			: { kind: 'failed', error: '图片地址不安全' }
 	}
-
 	if (descriptor.kind === 'remote') {
 		const remoteUrl = descriptor.src.startsWith('//') ? `https:${descriptor.src}` : descriptor.src
 		if (!isSafeExternalImageUrl(remoteUrl)) return { kind: 'failed', error: '图片地址不安全' }
@@ -229,7 +214,6 @@ async function sourceToFile(descriptor: RichTextImageDescriptor, maxDownloadByte
 			return { kind: 'failed', error: error instanceof Error ? error.message : '图片格式不受支持' }
 		}
 	}
-
 	try {
 		if (descriptor.kind === 'data' && descriptor.src.length > Math.min(CLIPBOARD_IMAGE_LIMITS.maxImageBytes, maxDownloadBytes) * 1.5) {
 			throw new ImageImportLimitError(
@@ -243,11 +227,9 @@ async function sourceToFile(descriptor: RichTextImageDescriptor, maxDownloadByte
 		return { kind: 'failed', error: descriptor.kind === 'blob' ? 'Blob 图片无法读取' : 'Base64 图片无法读取' }
 	}
 }
-
 function matchClipboardFiles(descriptors: RichTextImageDescriptor[], files: File[]): Map<number, File> {
 	const matches = new Map<number, File>()
 	const availableFiles = new Set(files.map((_, index) => index))
-
 	for (const descriptor of descriptors) {
 		const hints = new Set([normalizedFilename(descriptor.filenameHint), normalizedFilename(descriptor.src)].filter(Boolean))
 		if (hints.size === 0) continue
@@ -257,7 +239,6 @@ function matchClipboardFiles(descriptors: RichTextImageDescriptor[], files: File
 		matches.set(descriptor.index, files[fileIndex])
 		availableFiles.delete(fileIndex)
 	}
-
 	const unmatchedDescriptors = descriptors.filter(descriptor => !matches.has(descriptor.index))
 	const remainingFiles = [...availableFiles]
 	if (descriptors.length === files.length && unmatchedDescriptors.length > 0 && unmatchedDescriptors.length === remainingFiles.length) {
@@ -266,25 +247,21 @@ function matchClipboardFiles(descriptors: RichTextImageDescriptor[], files: File
 
 	return matches
 }
-
 function enforceLimits(
 	resolved: ResolvedImage[],
 	state: ImageLimitState = { acceptedCount: 0, acceptedBytes: 0 }
 ): ResolvedImage[] {
-
 	return resolved.map(result => {
 		if (result.kind !== 'file') return result
 		if (!isAllowedImageFile(result.file)) return { kind: 'failed', error: '图片格式不受支持或内容为空' }
 		if (result.file.size > CLIPBOARD_IMAGE_LIMITS.maxImageBytes) return { kind: 'failed', error: '图片超过 10 MB' }
 		if (state.acceptedCount >= CLIPBOARD_IMAGE_LIMITS.maxImageCount) return { kind: 'failed', error: '单次粘贴最多导入 30 张图片' }
 		if (state.acceptedBytes + result.file.size > CLIPBOARD_IMAGE_LIMITS.maxTotalBytes) return { kind: 'failed', error: '单次粘贴图片总大小超过 50 MB' }
-
 		state.acceptedCount += 1
 		state.acceptedBytes += result.file.size
 		return result
 	})
 }
-
 async function addResolvedFiles(
 	resolved: ResolvedImage[],
 	alts: string[],
@@ -304,17 +281,34 @@ async function addResolvedFiles(
 		}
 		return { originalIndex, item: null, status: 'failed', markdown: RICH_TEXT_IMAGE_FAILURE_PLACEHOLDER, error: '图片尚未加入列表' }
 	})
-
 	const pending = resolved.flatMap((result, originalIndex) =>
 		result.kind === 'file' ? [{ originalIndex, file: ensureNamedImageFile(result.file, originalIndex) }] : []
 	)
 	if (pending.length === 0) return output
 
+	// 本次改动：原始图片直接进入 addFilesWithMapping → 在图片匹配完成后逐张归一化为 1000x750 内、WebP Q88，再进入现有哈希/去重/local-image 链路。
+	// 逐张处理避免手机端同时解码多张大图造成内存峰值，同时保持 Word 多图的原始顺序；单张转换失败只标记该图片，不中断其他图片。
+	const normalizedPending: Array<{ originalIndex: number; file: File }> = []
+	for (const entry of pending) {
+		try {
+			normalizedPending.push({ originalIndex: entry.originalIndex, file: await normalizeImageToWebP(entry.file) })
+		} catch (error) {
+			output[entry.originalIndex] = {
+				originalIndex: entry.originalIndex,
+				item: null,
+				status: 'failed',
+				markdown: RICH_TEXT_IMAGE_FAILURE_PLACEHOLDER,
+				error: `图片转换为 WebP 失败：${error instanceof Error ? error.message : '未知错误'}`
+			}
+		}
+	}
+	if (normalizedPending.length === 0) return output
+
 	let added: ImageFileAddResult[]
 	try {
-		added = await addFilesWithMapping(pending.map(entry => entry.file))
+		added = await addFilesWithMapping(normalizedPending.map(entry => entry.file))
 	} catch {
-		for (const entry of pending) {
+		for (const entry of normalizedPending) {
 			output[entry.originalIndex] = {
 				originalIndex: entry.originalIndex,
 				item: null,
@@ -325,9 +319,8 @@ async function addResolvedFiles(
 		}
 		return output
 	}
-
 	for (const addResult of added) {
-		const pendingEntry = pending[addResult.originalIndex]
+		const pendingEntry = normalizedPending[addResult.originalIndex]
 		if (!pendingEntry) continue
 		const originalIndex = pendingEntry.originalIndex
 		if (!addResult.item || addResult.status === 'failed') {
@@ -340,7 +333,6 @@ async function addResolvedFiles(
 			}
 			continue
 		}
-
 		output[originalIndex] = {
 			originalIndex,
 			item: addResult.item,
@@ -351,7 +343,6 @@ async function addResolvedFiles(
 
 	return output
 }
-
 function summarize(results: ImportedImageResult[], placeholders: string[] = []): ClipboardImageImportResult {
 	const replacements = new Map<string, string>()
 	results.forEach((result, index) => {
@@ -366,7 +357,6 @@ function summarize(results: ImportedImageResult[], placeholders: string[] = []):
 		uniqueImageCount: new Set(results.flatMap(result => (result.item ? [result.item.id] : []))).size
 	}
 }
-
 export function collectClipboardImageFiles(dataTransfer: DataTransfer): File[] {
 	const files = Array.from(dataTransfer.files || []).filter(file => file.type.startsWith('image/'))
 	const itemFiles = Array.from(dataTransfer.items || []).flatMap(item => {
@@ -377,7 +367,6 @@ export function collectClipboardImageFiles(dataTransfer: DataTransfer): File[] {
 
 	return files.length > 0 ? files : itemFiles
 }
-
 export async function importRichTextImages(
 	descriptors: RichTextImageDescriptor[],
 	clipboardFiles: File[],
@@ -388,23 +377,22 @@ export async function importRichTextImages(
 	const limitedDescriptors = descriptors.slice(0, CLIPBOARD_IMAGE_LIMITS.maxImageCount)
 	const limitState: ImageLimitState = { acceptedCount: 0, acceptedBytes: 0 }
 	const resolved: ResolvedImage[] = []
-
 	for (let start = 0; start < limitedDescriptors.length; start += REMOTE_IMPORT_CONCURRENCY) {
 		const batch = limitedDescriptors.slice(start, start + REMOTE_IMPORT_CONCURRENCY)
 		const remainingDownloadBytes = Math.max(0, CLIPBOARD_IMAGE_LIMITS.maxTotalBytes - limitState.acceptedBytes)
 		const batchResults = await Promise.all(
 			batch.map(descriptor => {
-			const matchedFile = clipboardMatches.get(descriptor.index)
-			if (matchedFile) return Promise.resolve<ResolvedImage>({ kind: 'file', file: matchedFile })
-			const cacheKey = `${descriptor.kind}:${descriptor.src}`
-			if (!sourceCache.has(cacheKey)) sourceCache.set(cacheKey, sourceToFile(descriptor, Math.min(CLIPBOARD_IMAGE_LIMITS.maxImageBytes, remainingDownloadBytes)))
-			return sourceCache.get(cacheKey)!
+				const matchedFile = clipboardMatches.get(descriptor.index)
+				if (matchedFile) return Promise.resolve<ResolvedImage>({ kind: 'file', file: matchedFile })
+				const cacheKey = `${descriptor.kind}:${descriptor.src}`
+				if (!sourceCache.has(cacheKey))
+					sourceCache.set(cacheKey, sourceToFile(descriptor, Math.min(CLIPBOARD_IMAGE_LIMITS.maxImageBytes, remainingDownloadBytes)))
+				return sourceCache.get(cacheKey)!
 			})
 		)
 		resolved.push(...enforceLimits(batchResults, limitState))
 		sourceCache.clear()
 	}
-
 	for (let index = limitedDescriptors.length; index < descriptors.length; index += 1) {
 		resolved.push({ kind: 'failed', error: '单次粘贴最多导入 30 张图片' })
 	}
@@ -419,7 +407,6 @@ export async function importRichTextImages(
 		descriptors.map(descriptor => descriptor.placeholder)
 	)
 }
-
 export async function importStandaloneClipboardImages(files: File[], addFilesWithMapping: AddFilesWithMapping): Promise<ClipboardImageImportResult> {
 	const resolved: ResolvedImage[] = files.map(file => ({ kind: 'file', file }))
 	const results = await addResolvedFiles(enforceLimits(resolved), files.map(() => ''), addFilesWithMapping)
