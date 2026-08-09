@@ -10,6 +10,7 @@
 
 ---
 
+![](/blogs/iQIBLA/170473c3aa02c0ec.webp)
 
 ---
 
