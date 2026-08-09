@@ -29,20 +29,6 @@
 		]
 	},
 	{
-		"name": "贝多多｜全资产记账管理 App",
-		"year": 2017,
-		"image": "/images/project/3b23bb897edd2797.png",
-		"url": "https://axhub.im/pro/0903622a5fee31e3/",
-		"description": "从 投资记账切入，逐步扩展为覆盖资产、负债、数据增长与内容运营的全资产管理 App",
-		"tags": [
-			"投资记账",
-			"全资产管理",
-			"数据驱动增长",
-			"用户留存",
-			"金融工具"
-		]
-	},
-	{
 		"name": "心脑血管慢病一体化管理平台 | 原型设计",
 		"year": 2024,
 		"image": "/images/project/1ace17fd50a62809.webp",
@@ -54,6 +40,20 @@
 			"医患协同",
 			"风险评估",
 			"多端协同"
+		]
+	},
+	{
+		"name": "贝多多｜全资产记账管理 App",
+		"year": 2017,
+		"image": "/images/project/3b23bb897edd2797.png",
+		"url": "https://axhub.im/pro/0903622a5fee31e3/",
+		"description": "从 投资记账切入，逐步扩展为覆盖资产、负债、数据增长与内容运营的全资产管理 App",
+		"tags": [
+			"投资记账",
+			"全资产管理",
+			"数据驱动增长",
+			"用户留存",
+			"金融工具"
 		]
 	},
 	{
