@@ -93,11 +93,12 @@ export default function Page() {
 			})
 		}
 	}
+	// 本次改动：导入密钥后立即执行保存 → 导入密钥仅完成授权，用户明确点击“保存”后才提交 GitHub。
 	const handleChoosePrivateKey = async (file: File) => {
 		try {
 			const text = await file.text()
 			setPrivateKey(text)
-			await handleSave()
+			toast.success('密钥导入成功，请点击“保存”提交修改')
 		} catch (error) {
 			console.error('Failed to read private key:', error)
 			toast.error('读取密钥文件失败')
