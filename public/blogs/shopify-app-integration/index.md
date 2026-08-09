@@ -1,4 +1,3 @@
-# Inkwon 独立站接入 App 与跨境电商方案及费用评估
 
 ![](/blogs/shopify-app-integration/28b443cfe0d23a89.webp)
 
