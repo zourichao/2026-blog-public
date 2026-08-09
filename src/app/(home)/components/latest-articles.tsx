@@ -65,6 +65,7 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 									</p>
 								</div>
 
+								{/* 本次改动：PC 元信息自然顺排 → 分类始终靠左，作者 + 日期通过 ml-auto 始终靠右。 */}
 								<div className='mt-1 hidden min-w-0 items-center gap-2 lg:flex'>
 									{labels.length > 0 && (
 										<div className='flex min-w-0 items-center gap-1 overflow-hidden' aria-label='文章标签'>
@@ -75,7 +76,7 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 											))}
 										</div>
 									)}
-									<p className='shrink-0 whitespace-nowrap text-xs text-slate-500'>
+									<p className='ml-auto shrink-0 whitespace-nowrap text-xs text-slate-500'>
 										{getBlogAuthor(article.author)} · {formatDate(article.date)}
 									</p>
 								</div>
