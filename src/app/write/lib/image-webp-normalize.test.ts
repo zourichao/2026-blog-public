@@ -2,10 +2,12 @@ import assert from 'node:assert/strict'
 import { File as NodeFile } from 'node:buffer'
 import test from 'node:test'
 import {
+	ARTICLE_WATERMARK_OPTIONS,
 	COVER_IMAGE_WEBP_NORMALIZE_OPTIONS,
 	IMAGE_WEBP_NORMALIZE_OPTIONS,
 	buildWebPFilename,
 	calculateContainedImageSize,
+	drawArticleWatermark,
 	isWebPEncodedBlob,
 	normalizeCoverImageToWebP,
 	shouldNormalizeImageToWebP
@@ -17,7 +19,8 @@ test('正文图片参数继续保持最大宽度 1000、Q88，高度不设上限
 	assert.deepEqual(IMAGE_WEBP_NORMALIZE_OPTIONS, {
 		maxWidth: 1000,
 		quality: 0.88,
-		mimeType: 'image/webp'
+		mimeType: 'image/webp',
+		watermark: 'article'
 	})
 })
 
@@ -28,6 +31,61 @@ test('封面图片参数固定为最大尺寸 400×300、Q90', () => {
 		quality: 0.9,
 		mimeType: 'image/webp'
 	})
+})
+
+test('正文双层水印参数固定：右下角品牌水印 + 中央极淡水印', () => {
+	assert.deepEqual(ARTICLE_WATERMARK_OPTIONS, {
+		cornerText: '原型半径 · Zourichao',
+		centerText: '原型半径',
+		fontFamily: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif',
+		cornerFontSize: 18,
+		cornerFontWeight: 500,
+		cornerTextAlpha: 0.88,
+		cornerBackgroundAlpha: 0.28,
+		cornerMargin: 20,
+		cornerPaddingX: 10,
+		cornerPaddingY: 5,
+		cornerRadius: 7,
+		centerFontSize: 70,
+		centerFontWeight: 600,
+		centerAlpha: 0.055,
+		centerRotationDeg: -15,
+		centerYRatio: 0.58
+	})
+})
+
+test('正文水印按“中央极淡 → 右下角品牌”顺序绘制', () => {
+	const operations: Array<{ name: string; args: unknown[] }> = []
+	const context = {
+		globalAlpha: 1,
+		fillStyle: '',
+		font: '',
+		textAlign: 'start',
+		textBaseline: 'alphabetic',
+		save() { operations.push({ name: 'save', args: [] }) },
+		restore() { operations.push({ name: 'restore', args: [] }) },
+		translate(...args: unknown[]) { operations.push({ name: 'translate', args }) },
+		rotate(...args: unknown[]) { operations.push({ name: 'rotate', args }) },
+		beginPath() { operations.push({ name: 'beginPath', args: [] }) },
+		roundRect(...args: unknown[]) { operations.push({ name: 'roundRect', args }) },
+		fill() { operations.push({ name: 'fill', args: [] }) },
+		fillRect(...args: unknown[]) { operations.push({ name: 'fillRect', args }) },
+		fillText(...args: unknown[]) { operations.push({ name: 'fillText', args }) },
+		measureText(text: string) {
+			operations.push({ name: 'measureText', args: [text] })
+			return { width: 180 }
+		}
+	} as unknown as CanvasRenderingContext2D
+
+	drawArticleWatermark(context, 1000, 750)
+
+	const textCalls = operations.filter(operation => operation.name === 'fillText')
+	assert.deepEqual(textCalls.map(operation => operation.args[0]), ['原型半径', '原型半径 · Zourichao'])
+	const translateArgs = operations.find(operation => operation.name === 'translate')?.args || []
+	assert.equal(translateArgs[0], 500)
+	assert.ok(Math.abs(Number(translateArgs[1]) - 435) < 1e-9)
+	assert.ok(Math.abs(Number(operations.find(operation => operation.name === 'rotate')?.args[0]) + Math.PI / 12) < 1e-12)
+	assert.ok(operations.some(operation => operation.name === 'roundRect'))
 })
 
 test('在限制边界内等比缩小；正文仅限宽度，封面限制最大尺寸 400×300；小图不放大', () => {

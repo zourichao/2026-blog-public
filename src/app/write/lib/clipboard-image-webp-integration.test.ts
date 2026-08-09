@@ -10,6 +10,7 @@ test('多图粘贴转换为 WebP 时保持顺序，单图失败不拖垮整次�
 	const previousDocument = globalThis.document
 	const previousCreateImageBitmap = globalThis.createImageBitmap
 	const encodeCalls: Array<{ width: number; height: number; type: string; quality: number }> = []
+	const watermarkTexts: string[] = []
 
 	Object.defineProperty(globalThis, 'File', { configurable: true, writable: true, value: NodeFile })
 	Object.defineProperty(globalThis, 'createImageBitmap', {
@@ -36,7 +37,24 @@ test('多图粘贴转换为 WebP 时保持顺序，单图失败不拖垮整次�
 					width: 0,
 					height: 0,
 					getContext() {
-						return { drawImage() {} }
+						return {
+							globalAlpha: 1,
+							fillStyle: '',
+							font: '',
+							textAlign: 'start',
+							textBaseline: 'alphabetic',
+							drawImage() {},
+							save() {},
+							restore() {},
+							translate() {},
+							rotate() {},
+							beginPath() {},
+							roundRect() {},
+							fill() {},
+							fillRect() {},
+							measureText() { return { width: 180 } },
+							fillText(text: string) { watermarkTexts.push(text) }
+						}
 					},
 					toBlob(callback: (blob: Blob | null) => void, type: string, quality: number) {
 						encodeCalls.push({ width: canvas.width, height: canvas.height, type, quality })
@@ -86,6 +104,11 @@ test('多图粘贴转换为 WebP 时保持顺序，单图失败不拖垮整次�
 			{ width: 1000, height: 750, type: 'image/webp', quality: 0.88 },
 			{ width: 1000, height: 1500, type: 'image/webp', quality: 0.88 },
 			{ width: 800, height: 600, type: 'image/webp', quality: 0.88 }
+		])
+		assert.deepEqual(watermarkTexts, [
+			'原型半径', '原型半径 · Zourichao',
+			'原型半径', '原型半径 · Zourichao',
+			'原型半径', '原型半径 · Zourichao'
 		])
 	} finally {
 		Object.defineProperty(globalThis, 'File', { configurable: true, writable: true, value: previousFile })

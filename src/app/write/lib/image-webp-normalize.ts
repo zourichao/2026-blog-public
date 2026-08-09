@@ -3,13 +3,54 @@ export type ImageWebPNormalizeOptions = {
 	maxHeight?: number
 	quality: number
 	mimeType: 'image/webp'
+	watermark?: 'article'
+}
+
+export type ArticleWatermarkOptions = {
+	cornerText: string
+	centerText: string
+	fontFamily: string
+	cornerFontSize: number
+	cornerFontWeight: number
+	cornerTextAlpha: number
+	cornerBackgroundAlpha: number
+	cornerMargin: number
+	cornerPaddingX: number
+	cornerPaddingY: number
+	cornerRadius: number
+	centerFontSize: number
+	centerFontWeight: number
+	centerAlpha: number
+	centerRotationDeg: number
+	centerYRatio: number
+}
+
+// 本次改动：正文图片无品牌标识 → 固定绘制“右下角品牌水印 + 中央极淡水印”，第一版暂不按图片尺寸自适应。
+export const ARTICLE_WATERMARK_OPTIONS: ArticleWatermarkOptions = {
+	cornerText: '原型半径 · Zourichao',
+	centerText: '原型半径',
+	fontFamily: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif',
+	cornerFontSize: 18,
+	cornerFontWeight: 500,
+	cornerTextAlpha: 0.88,
+	cornerBackgroundAlpha: 0.28,
+	cornerMargin: 20,
+	cornerPaddingX: 10,
+	cornerPaddingY: 5,
+	cornerRadius: 7,
+	centerFontSize: 70,
+	centerFontWeight: 600,
+	centerAlpha: 0.055,
+	centerRotationDeg: -15,
+	centerYRatio: 0.58
 }
 
 // 本次改动：正文图片参数保持最大宽度 1000 / Q88 → 继续保持不变，避免影响既有正文粘贴链路。
 export const IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
 	maxWidth: 1000,
 	quality: 0.88,
-	mimeType: 'image/webp'
+	mimeType: 'image/webp',
+	watermark: 'article'
 }
 
 // 本次改动：封面原图直接进入图片列表 → 封面先按最大尺寸 400×300 / Q90 转为真正 WebP，再进入图片列表。
@@ -149,6 +190,63 @@ function canvasToWebPBlob(canvas: HTMLCanvasElement, options: ImageWebPNormalize
 	})
 }
 
+function fillRoundedRect(
+	context: CanvasRenderingContext2D,
+	x: number,
+	y: number,
+	width: number,
+	height: number,
+	radius: number
+) {
+	context.beginPath()
+	if (typeof context.roundRect === 'function') {
+		context.roundRect(x, y, width, height, radius)
+		context.fill()
+		return
+	}
+
+	// 兼容不支持 roundRect 的旧浏览器：退化成普通矩形，不影响水印可读性。
+	context.fillRect(x, y, width, height)
+}
+
+// 本次改动：正文图片无水印 → 在最终尺寸 Canvas 上先绘制中央极淡水印，再绘制右下角品牌水印。
+export function drawArticleWatermark(
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number,
+	options: ArticleWatermarkOptions = ARTICLE_WATERMARK_OPTIONS
+) {
+	context.save()
+	context.translate(width / 2, height * options.centerYRatio)
+	context.rotate((options.centerRotationDeg * Math.PI) / 180)
+	context.textAlign = 'center'
+	context.textBaseline = 'middle'
+	context.font = `${options.centerFontWeight} ${options.centerFontSize}px ${options.fontFamily}`
+	context.globalAlpha = options.centerAlpha
+	context.fillStyle = '#000000'
+	context.fillText(options.centerText, 0, 0)
+	context.restore()
+
+	context.save()
+	context.textAlign = 'left'
+	context.textBaseline = 'middle'
+	context.font = `${options.cornerFontWeight} ${options.cornerFontSize}px ${options.fontFamily}`
+	const textWidth = context.measureText(options.cornerText).width
+	const boxWidth = textWidth + options.cornerPaddingX * 2
+	const boxHeight = options.cornerFontSize + options.cornerPaddingY * 2
+	const boxX = width - options.cornerMargin - boxWidth
+	const boxY = height - options.cornerMargin - boxHeight
+
+	context.globalAlpha = options.cornerBackgroundAlpha
+	context.fillStyle = '#000000'
+	fillRoundedRect(context, boxX, boxY, boxWidth, boxHeight, options.cornerRadius)
+
+	context.globalAlpha = options.cornerTextAlpha
+	context.fillStyle = '#ffffff'
+	context.fillText(options.cornerText, boxX + options.cornerPaddingX, boxY + boxHeight / 2)
+	context.restore()
+}
+
 /**
  * 按传入规则重新编码为真正 WebP。
  * 默认正文模式仅处理 PNG/JPEG/WebP；GIF 为避免动画丢失保持原文件。
@@ -174,6 +272,11 @@ export async function normalizeImageToWebP(
 		const context = canvas.getContext('2d')
 		if (!context) throw new Error('当前浏览器无法创建图片处理画布')
 		context.drawImage(decoded.source, 0, 0, target.width, target.height)
+
+		// 本次改动：正文缩放后直接编码 WebP → 正文先烧入双层品牌水印；封面 options 不含 watermark，因此保持无水印。
+		if (options.watermark === 'article') {
+			drawArticleWatermark(context, target.width, target.height)
+		}
 
 		const webpBlob = await canvasToWebPBlob(canvas, options)
 		if (!(await isWebPEncodedBlob(webpBlob))) {
