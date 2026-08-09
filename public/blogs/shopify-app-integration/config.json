@@ -1,0 +1,10 @@
+{
+  "title": "跨境电商 App 要不要自研商城？先看 Shopify 接入成本",
+  "author": "zourichao",
+  "tags": [],
+  "date": "2026-05-07T23:57",
+  "summary": "已有 Shopify 独立站后，当前重点不是重做 App 商城，而是先接入 App，打通商城入口、账号弱绑定、订单回传、物流/保修和复购链路。本文从接入方式、H5 内嵌、账号联动、自研成本、市场资质和费用周期出发，分析为什么初期阶段更适合采用 “Shopify 轻接入 + 订单回传”，而不是直接自研完整跨境电商系统。",
+  "cover": "/blogs/shopify-app-integration/4dd135bf36d4cde7.webp",
+  "hidden": false,
+  "category": "产品见解"
+}
