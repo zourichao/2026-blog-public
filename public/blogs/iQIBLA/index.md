@@ -14,9 +14,7 @@
 
 ![](/blogs/iQIBLA/73d6720a875ac89b.webp)
 
-![](/blogs/iQIBLA/3a1f96984d9d9162.webp)
-
-![](/blogs/iQIBLA/e9a4eff232143703.webp)
+![](/blogs/iQIBLA/044bfd20a624b3e1.webp)
 
 ---
 
