@@ -17,9 +17,9 @@ interface SelectProps {
 	options: SelectOption[]
 	className?: string
 	disabled?: boolean
+	dropdownClassName?: string
 }
-
-export function Select({ value, onChange, options, className, disabled }: SelectProps) {
+export function Select({ value, onChange, options, className, disabled, dropdownClassName }: SelectProps) {
 	const [open, setOpen] = useState(false)
 	const [mounted, setMounted] = useState(false)
 	const triggerRef = useRef<HTMLButtonElement>(null)
@@ -31,7 +31,6 @@ export function Select({ value, onChange, options, className, disabled }: Select
 	useEffect(() => {
 		setMounted(true)
 	}, [])
-
 	useEffect(() => {
 		if (open && triggerRef.current) {
 			const rect = triggerRef.current.getBoundingClientRect()
@@ -56,7 +55,6 @@ export function Select({ value, onChange, options, className, disabled }: Select
 				})
 			}
 		}
-
 		const handleClickOutside = (e: MouseEvent) => {
 			const target = e.target as Node
 			if (triggerRef.current && !triggerRef.current.contains(target) && dropdownRef.current && !dropdownRef.current.contains(target)) {
@@ -77,7 +75,6 @@ export function Select({ value, onChange, options, className, disabled }: Select
 		const handleResize = () => {
 			updatePosition()
 		}
-
 		document.addEventListener('mousedown', handleClickOutside)
 		document.addEventListener('keydown', handleEscape)
 		window.addEventListener('scroll', handleScroll, true)
@@ -90,12 +87,10 @@ export function Select({ value, onChange, options, className, disabled }: Select
 			window.removeEventListener('resize', handleResize)
 		}
 	}, [open])
-
 	const handleSelect = (optionValue: string) => {
 		onChange(optionValue)
 		setOpen(false)
 	}
-
 	return (
 		<>
 			<button
@@ -121,7 +116,7 @@ export function Select({ value, onChange, options, className, disabled }: Select
 					<path strokeLinecap='round' strokeLinejoin='round' d='M19 9l-7 7-7-7' />
 				</svg>
 			</button>
-
+			{/* 本次改动：下拉层级固定 z-50 → 默认仍为 z-50，但允许调用方按弹窗层级覆盖。 */}
 			{mounted &&
 				createPortal(
 					<AnimatePresence>
@@ -132,7 +127,7 @@ export function Select({ value, onChange, options, className, disabled }: Select
 								animate={{ opacity: 1, y: 0, scale: 1 }}
 								exit={{ opacity: 0, y: -8, scale: 0.95 }}
 								transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-								className='bg-card/95 fixed z-50 rounded-xl border backdrop-blur-xl'
+								className={cn('bg-card/95 fixed z-50 rounded-xl border backdrop-blur-xl', dropdownClassName)}
 								style={{
 									top: `${position.top}px`,
 									left: `${position.left}px`,
