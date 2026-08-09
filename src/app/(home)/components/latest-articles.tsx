@@ -42,7 +42,8 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 								</div>
 							)}
 							<div className='min-w-0'>
-								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 transition-colors group-hover:text-sky-700 motion-reduce:transition-none'>
+								{/* 本次改动：标题全端最多 2 行 → 移动端保持最多 2 行，PC（lg 及以上）最多 1 行。 */}
+								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 transition-colors group-hover:text-sky-700 motion-reduce:transition-none lg:line-clamp-1'>
 									{article.title || article.slug}
 								</h3>
 
@@ -65,18 +66,16 @@ export default function LatestArticles({ articles }: LatestArticlesProps) {
 									</p>
 								</div>
 
-								{/* 本次改动：PC 元信息自然顺排 → 分类始终靠左，作者 + 日期通过 ml-auto 始终靠右。 */}
-								<div className='mt-1 hidden min-w-0 items-center gap-2 lg:flex'>
-									{labels.length > 0 && (
-										<div className='flex min-w-0 items-center gap-1 overflow-hidden' aria-label='文章标签'>
-											{labels.map(label => (
-												<span key={label} className='inline-flex rounded-md bg-sky-50/90 px-2 py-0.5 text-[11px] leading-4 font-medium text-sky-700'>
-													{label}
-												</span>
-											))}
-										</div>
-									)}
-									<p className='ml-auto shrink-0 whitespace-nowrap text-xs text-slate-500'>
+								{/* 本次改动：PC 元信息通过 ml-auto 自然推开 → 使用 w-full + justify-between 明确固定“分类左 / 作者日期右”的两端对齐。 */}
+								<div className='mt-1 hidden w-full min-w-0 items-center justify-between gap-2 lg:flex'>
+									<div className='flex min-w-0 items-center gap-1 overflow-hidden' aria-label='文章标签'>
+										{labels.map(label => (
+											<span key={label} className='inline-flex shrink-0 rounded-md bg-sky-50/90 px-2 py-0.5 text-[11px] leading-4 font-medium text-sky-700'>
+												{label}
+											</span>
+										))}
+									</div>
+									<p className='shrink-0 whitespace-nowrap text-right text-xs text-slate-500'>
 										{getBlogAuthor(article.author)} · {formatDate(article.date)}
 									</p>
 								</div>
