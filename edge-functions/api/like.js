@@ -73,6 +73,27 @@ function parseVisitorState(value) {
 	}
 }
 
+function normalizeArticleSlug(slug) {
+	return slug
+		.trim()
+		.replace(/[^A-Za-z0-9_]/g, '_')
+		.replace(/_+/g, '_')
+		.replace(/^_+|_+$/g, '')
+}
+
+function getStorageId(slug) {
+	if (slug === 'site') return 'index'
+
+	if (!slug.startsWith('blog:')) return ''
+
+	const articleSlug = normalizeArticleSlug(slug.slice(5))
+
+	// index 已保留给首页 + About，禁止文章占用。
+	if (!articleSlug || articleSlug === 'index') return ''
+
+	return articleSlug
+}
+
 export async function onRequest({ request, env }) {
 	try {
 		const method = request.method.toUpperCase()
@@ -87,9 +108,11 @@ export async function onRequest({ request, env }) {
 		if (!slug) return json({ error: 'missing_slug' }, 400)
 		if (slug.length > 200) return json({ error: 'invalid_slug' }, 400)
 
+		const storageId = getStorageId(slug)
+		if (!storageId) return json({ error: 'invalid_slug' }, 400)
+
 		const kv = getKv(env)
-		const slugHash = await sha256_32(slug)
-		const countKey = `count_${slugHash}`
+		const countKey = `count_${storageId}`
 		const count = parseCount(await kv.get(countKey))
 
 		if (method === 'GET') {
@@ -99,7 +122,7 @@ export async function onRequest({ request, env }) {
 		const clientIp = getClientIp(request)
 		const userAgent = request.headers.get('user-agent') || ''
 		const visitorHash = await sha256_32(`${clientIp}\n${userAgent}`)
-		const visitorKey = `visitor_${slugHash}_${visitorHash}`
+		const visitorKey = `visitor_${storageId}_${visitorHash}`
 		const today = getChinaDate()
 		const visitorState = parseVisitorState(await kv.get(visitorKey))
 		const todayLikeCount = visitorState.date === today ? visitorState.count : 0
