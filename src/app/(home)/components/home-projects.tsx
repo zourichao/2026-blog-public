@@ -45,7 +45,8 @@ export default function HomeProjects({ projects }: HomeProjectsProps) {
 						/>
 						<div className='min-w-0 flex-1'>
 							<div className='flex items-start justify-between gap-2'>
-								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 group-hover:text-sky-700'>{project.name}</h3>
+								{/* 本次改动：line-clamp-2 → line-clamp-2 xl:line-clamp-1，PC 首页项目标题限制为单行，移动端保持两行。 */}
+								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 group-hover:text-sky-700 xl:line-clamp-1'>{project.name}</h3>
 								<ExternalLink aria-hidden='true' className='mt-0.5 size-3.5 shrink-0 text-slate-400' />
 							</div>
 							<p className='mt-1 line-clamp-1 text-[13px] leading-5 text-slate-600 sm:line-clamp-2'>{project.description}</p>
