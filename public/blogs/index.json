@@ -1,16 +1,5 @@
 [
   {
-    "slug": "smart_baby_app",
-    "title": "智能母婴App功能架构与产品规划",
-    "author": "zourichao",
-    "tags": [],
-    "date": "2026-08-20T21:00",
-    "summary": "从设备接入、智能监护到数据服务与风险优先级，系统梳理智能母婴 App 的完整功能架构与产品规划方法。",
-    "cover": "/blogs/smart_baby_app/f966188bb0dbc188.webp",
-    "hidden": false,
-    "category": "产品见解"
-  },
-  {
     "slug": "momcozy_eufy_snoo_cradlewise_smart_baby",
     "title": "智能母婴竞品洞察，从 Momcozy、eufy、SNOO 到 Cradlewise",
     "author": "zourichao",
@@ -18,6 +7,17 @@
     "date": "2026-07-21T22:30",
     "summary": "从 Momcozy、eufy、SNOO、Cradlewise 四个智能母婴品牌出发，拆解吸乳器、婴儿监护器、智能摇床与智能婴儿床的产品策略和 App 体验，分析设备连接、提醒、异常恢复、AI 安抚与订阅服务背后的核心竞争力。",
     "cover": "/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/c96efd10b209c298.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
+    "slug": "smart_baby_app",
+    "title": "智能母婴App功能架构与产品规划",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-07-20T21:00",
+    "summary": "从设备接入、智能监护到数据服务与风险优先级，系统梳理智能母婴 App 的完整功能架构与产品规划方法。",
+    "cover": "/blogs/smart_baby_app/f966188bb0dbc188.webp",
     "hidden": false,
     "category": "产品见解"
   },
