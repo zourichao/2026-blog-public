@@ -1,19 +1,27 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+
 import { useWriteStore } from '../stores/write-store'
+
 import { usePreviewStore } from '../stores/preview-store'
 import { useLoadBlog } from '../hooks/use-load-blog'
+
 import { WriteEditor } from '../components/editor'
+
 import { WriteSidebar } from '../components/sidebar'
+
 import { WriteActions } from '../components/actions'
+
 import { WritePreview } from '../components/preview'
 
 export default function EditBlogPage() {
 	const params = useParams() as { slug?: string }
+
 	const slug = params?.slug || ''
 
 	const { form, cover } = useWriteStore()
+
 	const { isPreview, closePreview } = usePreviewStore()
 	const { loading } = useLoadBlog(slug)
 
@@ -28,11 +36,15 @@ export default function EditBlogPage() {
 	}
 
 	return isPreview ? (
-		<WritePreview form={form} coverPreviewUrl={coverPreviewUrl} onClose={closePreview} slug={slug} />
+		<>
+			{/* 本次改动：预览沿用路由旧 slug → 使用表单当前 slug，修改 slug 后预览不再指向旧文章。 */}
+			<WritePreview form={form} coverPreviewUrl={coverPreviewUrl} onClose={closePreview} slug={form.slug} />
+		</>
 	) : (
 		<>
 			<div className='flex h-full justify-center gap-6 px-6 pt-24 pb-12'>
 				<WriteEditor />
+
 				<WriteSidebar />
 			</div>
 
