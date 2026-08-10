@@ -5,7 +5,6 @@ import { Heart } from 'lucide-react'
 import clsx from 'clsx'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { BLOG_SLUG_KEY } from '@/consts'
 
 type LikeButtonProps = {
 	slug?: string
@@ -13,11 +12,12 @@ type LikeButtonProps = {
 	delay?: number
 }
 
-const ENDPOINT = 'https://blog-liker.yysuni1001.workers.dev/api/like'
+const ENDPOINT = '/api/like'
 
-export default function LikeButton({ slug = 'yysuni', delay, className }: LikeButtonProps) {
-	slug = BLOG_SLUG_KEY + slug
+export default function LikeButton({ slug, delay, className }: LikeButtonProps) {
+	const likeSlug = slug?.trim() || ''
 	const [liked, setLiked] = useState(false)
+	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [show, setShow] = useState(false)
 	const [justLiked, setJustLiked] = useState(false)
 	const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([])
@@ -37,18 +37,21 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 
 	const fetcher = useCallback(async (url: string): Promise<number | null> => {
 		const res = await fetch(url, { method: 'GET', cache: 'no-store' })
-		if (!res.ok) return null
+		if (!res.ok) throw new Error(`读取点赞数失败: ${res.status}`)
+
 		const data = await res.json().catch(() => ({}))
 		return typeof data?.count === 'number' ? data.count : null
 	}, [])
 
-	const { data: fetchedCount, mutate } = useSWR(slug ? `${ENDPOINT}?slug=${encodeURIComponent(slug)}` : null, fetcher, {
+	const { data: fetchedCount, mutate } = useSWR(likeSlug ? `${ENDPOINT}?slug=${encodeURIComponent(likeSlug)}` : null, fetcher, {
 		revalidateOnFocus: false,
 		dedupingInterval: 1000 * 10
 	})
 
 	const handleLike = useCallback(async () => {
-		if (!slug) return
+		if (!likeSlug || isSubmitting) return
+
+		setIsSubmitting(true)
 		setLiked(true)
 		setJustLiked(true)
 
@@ -64,18 +67,34 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 		setTimeout(() => setParticles([]), 1000)
 
 		try {
-			const url = `${ENDPOINT}?slug=${encodeURIComponent(slug)}`
-			const res = await fetch(url, { method: 'POST' })
+			const url = `${ENDPOINT}?slug=${encodeURIComponent(likeSlug)}`
+			const res = await fetch(url, { method: 'POST', cache: 'no-store' })
+			if (!res.ok) throw new Error(`点赞失败: ${res.status}`)
+
 			const data = await res.json().catch(() => ({}))
-			if (data.reason == 'rate_limited') toast('谢谢啦😘，今天已经不能再点赞啦💕')
-			const value = typeof data?.count === 'number' ? data.count : (fetchedCount ?? 0) + 1
-			await mutate(value, { revalidate: false })
-		} catch {
-			// ignore
+			if (typeof data?.count !== 'number') throw new Error('点赞接口未返回有效 count')
+
+			await mutate(data.count, { revalidate: false })
+
+			if (data.reason === 'rate_limited') {
+				setJustLiked(false)
+				setParticles([])
+				toast('谢谢啦😘，今天已经不能再点赞啦💕')
+			}
+		} catch (error) {
+			setLiked(false)
+			setJustLiked(false)
+			setParticles([])
+			console.error('Like request failed:', error)
+			toast.error('点赞失败，请稍后再试')
+		} finally {
+			setIsSubmitting(false)
 		}
-	}, [slug, fetchedCount, mutate])
+	}, [likeSlug, isSubmitting, mutate])
 
 	const count = typeof fetchedCount === 'number' ? fetchedCount : null
+
+	if (!likeSlug) return null
 
 	if (show)
 		return (
@@ -85,8 +104,10 @@ export default function LikeButton({ slug = 'yysuni', delay, className }: LikeBu
 				whileHover={{ scale: 1.05 }}
 				whileTap={{ scale: 0.95 }}
 				aria-label='Like this post'
+				aria-busy={isSubmitting}
+				disabled={isSubmitting}
 				onClick={handleLike}
-				className={clsx('card heartbeat-container relative overflow-visible rounded-full p-3', className)}>
+				className={clsx('card heartbeat-container relative overflow-visible rounded-full p-3 disabled:cursor-default', className)}>
 				<AnimatePresence>
 					{particles.map(particle => (
 						<motion.div

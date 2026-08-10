@@ -192,7 +192,8 @@ export default function Page() {
 							<GithubSVG />
 						</motion.a>
 
-						<LikeButton slug='open-source' delay={0} />
+						{/* 本次改动：open-source → site，与首页共用点赞总数。 */}
+						<LikeButton slug='site' delay={0} />
 					</div>
 				</div>
 			</div>
