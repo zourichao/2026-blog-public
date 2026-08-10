@@ -1,4 +1,4 @@
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/31a59a0e2efb8c97.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/31a59a0e2efb8c97.webp)
 
 智能母婴产品很容易给人一种印象：硬件能力越多、监测数据越细、自动化越强，产品就越有竞争力。
 
@@ -27,9 +27,9 @@ Momcozy 从吸乳器起家，正在向监护、清洁、喂养等更多育儿设
 在普通工具 App 里，一次加载失败可能只是“不好用”。但在夜间看护或自动安抚场景里，它很容易被用户理解成“这个设备到底还能不能相信”。
 
 ---
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/e734f696a594d6e0.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/e734f696a594d6e0.webp)
 
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/f8a887d138a69a50.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/f8a887d138a69a50.webp)
 
 ## 02｜Momcozy：从吸乳器基本盘走向多设备育儿生态
 
@@ -52,9 +52,9 @@ Momcozy 当前最清晰的基本盘仍然是吸乳器及泵奶设备。其近年
 **Momcozy 的下一步，不只是增加智能设备，而是让这些设备真正进入同一个用户体系。**
 
 ---
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/5f1591172d1c7055.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/5f1591172d1c7055.webp)
 
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/c7e7193b44f395d6.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/c7e7193b44f395d6.webp)
 ## 03｜eufy：硬件已经有购买理由，App 要解决“能不能确认”
 
 eufy 的基础和 Momcozy 不一样。
@@ -84,9 +84,9 @@ eufy 的基础和 Momcozy 不一样。
 **硬件能力解决“为什么买”，状态、数据和异常闭环解决“为什么继续用”。**
 
 ---
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/0ab8803d5102539d.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/0ab8803d5102539d.webp)
 
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/8e885ee835a4f90b.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/8e885ee835a4f90b.webp)
 ## 04｜SNOO：高价硬件之后，软件开始影响“所有权感”
 
 SNOO 的特殊之处在于，它已经不只是一个智能硬件产品。
@@ -110,9 +110,9 @@ SNOO 全新售价为 1,695 美元，累计服务家庭超过 50 万，并通过�
 **当硬件价格足够高时，软件规则本身也会成为产品价值的一部分。**
 
 ---
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/46cf98697285993f.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/46cf98697285993f.webp)
 
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/41d4d85b72013935.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/41d4d85b72013935.webp)
 
 ## 05｜Cradlewise：AI 安抚有价值，但黑盒结果很难让人完全放心
 
@@ -144,7 +144,7 @@ Cradlewise 的差异化路径更偏“智能化”。
 **AI 能提高自动化上限，但只有把判断依据和异常边界解释清楚，用户才敢把控制权交出去。**
 
 ---
-![](/blogs/momcozy-eufy-snoo-cradlewise-smart-baby/6fee4aac35fc58e3.webp)
+![](/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/6fee4aac35fc58e3.webp)
 ## 06｜四个品牌真正拉开差距的地方
 
 把四个品牌的核心矛盾放在一起，会比单独看功能列表更清楚。
