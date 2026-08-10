@@ -1,5 +1,5 @@
 
-![](/blogs/shopify-app-integration/28b443cfe0d23a89.webp)
+![](/blogs/shopify_app_integration/28b443cfe0d23a89.webp)
 
 基于“已有 Shopify 独立站，尚未接入 App”的现状分析。
 
@@ -11,7 +11,7 @@
 
 ---
 
-![](/blogs/shopify-app-integration/44f1ee0d5f86054e.webp)
+![](/blogs/shopify_app_integration/44f1ee0d5f86054e.webp)
 
 ## 01｜先看结论
 
