@@ -206,6 +206,10 @@ export function WriteEditor() {
 				if (converted.images.length > 0) {
 					const imported = await clipboardImages.importRichTextImages(converted.images, resolvedImageFiles, addImportedFiles)
 					markdown = richText.replaceRichTextImagePlaceholders(markdown, imported.replacements)
+					if (isWordHtml && imported.failedCount > 0) {
+						// 本次改动：Word 图片失败仅缩短正文占位提示；不改变图片识别、压缩、水印或上传逻辑。
+						markdown = markdown.split(richText.RICH_TEXT_IMAGE_FAILURE_PLACEHOLDER).join('> 图片未导入｜请重新粘贴或上传。')
+					}
 					localizedCount = imported.localizedCount
 					externalCount = imported.externalCount
 					failedCount = imported.failedCount
@@ -246,8 +250,12 @@ export function WriteEditor() {
 				const noUsableBinary = Boolean(wordClipboard && !hasDirectWordImageBinary(wordClipboard) && !hasEmbeddedWordImageSource)
 				const hasRtfRaster = Boolean(wordClipboard && (wordClipboard.diagnostic.rtf.pngCount > 0 || wordClipboard.diagnostic.rtf.jpegCount > 0))
 				const feedback = getWordImportFeedback({ localizedCount, failedCount, noUsableBinary, hasRtfRaster, fallbackMessage: importMessage })
-				if (feedback.level === 'warning') toast.warning(feedback.message, toastOptions)
-				else toast.success(feedback.message, toastOptions)
+				// 本次改动：失败计数描述为“图片位置”，避免把重复引用误解成不同图片文件。
+				const feedbackMessage = feedback.message.startsWith('Word ')
+					? feedback.message.replace(`这 ${failedCount} 张图片`, `这 ${failedCount} 个图片位置`)
+					: feedback.message
+				if (feedback.level === 'warning') toast.warning(feedbackMessage, toastOptions)
+				else toast.success(feedbackMessage, toastOptions)
 			} else {
 				toast.success(importMessage, toastOptions)
 			}
