@@ -5,6 +5,7 @@ import { INIT_DELAY } from '@/consts'
 import { useRef, useState } from 'react'
 import { createRichTextImportToken, insertRichTextImportToken, replaceRichTextImportToken } from '../lib/editor-insertion'
 import { shouldPreferPlainMarkdown } from '../lib/clipboard-intent'
+import { normalizeWordClipboardSemanticHtml } from '../lib/word-semantic-normalize'
 import {
 	captureWordClipboard,
 	dedupeWordClipboardImageFiles,
@@ -13,12 +14,10 @@ import {
 	isWordClipboardHtml,
 	logWordClipboardDiagnostic
 } from '../lib/word-clipboard-import'
-
 const defaultText = 'text'
 const RICH_HTML_PATTERN = /<(?:p|div|h[1-6]|ul|ol|li|a|table|img|blockquote|pre|code|strong|b|em|i|del|s|strike|br|hr|u|sub|sup)\b/i
 const STYLED_INLINE_HTML_PATTERN = /<(?:span|font)\b[^>]*(?:class\s*=\s*["'][^"']*Mso|style\s*=\s*["'][^"']*(?:font-|font:|text-decoration))/i
 const OFFICE_HTML_PATTERN = /<(?:o|v|w|st1):[a-z]/i
-
 function collectClipboardImageFiles(dataTransfer: DataTransfer): File[] {
 	const files = Array.from(dataTransfer.files || []).filter(file => file.type.startsWith('image/'))
 	const itemFiles = Array.from(dataTransfer.items || []).flatMap(item => {
@@ -28,7 +27,6 @@ function collectClipboardImageFiles(dataTransfer: DataTransfer): File[] {
 	})
 	return files.length > 0 ? files : itemFiles
 }
-
 function imageImportMessage(localized: number, external: number, failed: number, richText: boolean): string {
 	if (external > 0 && failed > 0) {
 		return `内容已导入：${localized} 张图片已保存，${external} 张暂时保留为外部地址，${failed} 张无法读取，已在原位置标记。`
@@ -38,7 +36,6 @@ function imageImportMessage(localized: number, external: number, failed: number,
 	if (localized > 0) return richText ? `已导入富文本，识别并添加 ${localized} 张图片。` : `已添加 ${localized} 张图片。`
 	return richText ? '已将富文本转换为 Markdown。' : '剪贴板中没有可导入的图片。'
 }
-
 export function WriteEditor() {
 	const { form, updateForm, addFilesWithMapping } = useWriteStore()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -52,7 +49,6 @@ export function WriteEditor() {
 		textarea.focus()
 		// Use execCommand to preserve undo/redo stack
 		const success = document.execCommand('insertText', false, text)
-
 		if (!success) {
 			// Fallback for browsers that don't support execCommand
 			const { selectionStart, selectionEnd, value } = textarea
@@ -65,7 +61,6 @@ export function WriteEditor() {
 			}, 0)
 		}
 	}
-
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		const textarea = textareaRef.current
 		if (!textarea) return
@@ -78,10 +73,8 @@ export function WriteEditor() {
 			e.preventDefault()
 			const before = value.substring(0, selectionStart)
 			const after = value.substring(selectionEnd)
-
 			// Check if already bold
 			const isBold = before.endsWith('**') && after.startsWith('**')
-
 			if (isBold && selectedText) {
 				// Remove bold - select including markers and replace
 				textarea.setSelectionRange(selectionStart - 2, selectionEnd + 2)
@@ -98,7 +91,6 @@ export function WriteEditor() {
 			}
 			return
 		}
-
 		// Ctrl/Cmd + I: Toggle Italic
 		if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
 			e.preventDefault()
@@ -107,7 +99,6 @@ export function WriteEditor() {
 
 			// Check if already italic
 			const isItalic = before.endsWith('*') && after.startsWith('*') && !(before.endsWith('**') && after.startsWith('**'))
-
 			if (isItalic && selectedText) {
 				// Remove italic and replace
 				textarea.setSelectionRange(selectionStart - 1, selectionEnd + 1)
@@ -125,7 +116,6 @@ export function WriteEditor() {
 			}
 			return
 		}
-
 		// Ctrl/Cmd + K: Link
 		if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
 			e.preventDefault()
@@ -145,7 +135,6 @@ export function WriteEditor() {
 			insertText('\t')
 			return
 		}
-
 		// Shift + Tab: Outdent
 		if (e.key === 'Tab' && e.shiftKey) {
 			e.preventDefault()
@@ -162,7 +151,6 @@ export function WriteEditor() {
 			return
 		}
 	}
-
 	const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
 		const clipboardData = e.clipboardData
 		const html = clipboardData.getData('text/html')
@@ -173,7 +161,6 @@ export function WriteEditor() {
 		if (wordClipboard) logWordClipboardDiagnostic(wordClipboard.diagnostic)
 		const imageFiles = wordClipboard?.imageFiles || collectClipboardImageFiles(clipboardData)
 		const preservePlainMarkdown = imageFiles.length === 0 && shouldPreferPlainMarkdown(html, plainText)
-
 		// Preserve native paste for plain text and already-authored Markdown.
 		if (preservePlainMarkdown || (!hasRichHtml && imageFiles.length === 0)) return
 
@@ -182,7 +169,6 @@ export function WriteEditor() {
 			toast.info('正在处理上一次粘贴，请稍候。')
 			return
 		}
-
 		const textarea = e.currentTarget
 		const token = createRichTextImportToken()
 		const pending = insertRichTextImportToken(textarea.value, textarea.selectionStart, textarea.selectionEnd, token)
@@ -191,7 +177,6 @@ export function WriteEditor() {
 		importingRef.current = true
 		setIsImporting(true)
 		const loadingToast = toast.loading('正在导入富文本并处理图片…')
-
 		try {
 			const clipboardImages = await import('../lib/clipboard-image-import')
 			let resolvedImageFiles = wordClipboard ? await dedupeWordClipboardImageFiles(wordClipboard.imageCandidates) : imageFiles
@@ -201,24 +186,23 @@ export function WriteEditor() {
 			let failedCount = 0
 			let complexTableCount = 0
 			let hasEmbeddedWordImageSource = false
-
 			if (hasRichHtml) {
 				const richText = await import('../lib/rich-text-import')
-				const converted = richText.convertRichHtmlToMarkdown(html)
+				// 本次改动：仅 Word HTML 在进入既有富文本转换器前补充语义标准化；图片链路与 Markdown 渲染不变。
+				const htmlForConversion = isWordHtml ? normalizeWordClipboardSemanticHtml(html) : html
+				const converted = richText.convertRichHtmlToMarkdown(htmlForConversion)
 				if (converted.markdownTemplate === richText.RICH_TEXT_IMPORT_FAILURE_PLACEHOLDER) {
 					throw new Error('富文本转换失败')
 				}
 				markdown = converted.markdownTemplate
 				complexTableCount = converted.complexTableCount
 				hasEmbeddedWordImageSource = converted.images.some(image => image.kind === 'data' || image.kind === 'blob')
-
 				if (wordClipboard && resolvedImageFiles.length === 0 && wordClipboard.rtf) {
 					const wordRtf = await import('../lib/word-rtf-image-import')
 					const rtfResult = wordRtf.extractWordRtfRasterImages(wordClipboard.rtf)
 					resolvedImageFiles = wordRtf.selectWordRtfFilesForHtmlImages(rtfResult, converted.images)
 					wordRtf.logWordRtfImageDiagnostic(rtfResult, resolvedImageFiles.length)
 				}
-
 				if (converted.images.length > 0) {
 					const imported = await clipboardImages.importRichTextImages(converted.images, resolvedImageFiles, addImportedFiles)
 					markdown = richText.replaceRichTextImagePlaceholders(markdown, imported.replacements)
@@ -233,7 +217,6 @@ export function WriteEditor() {
 					externalCount = imported.externalCount
 					failedCount = imported.failedCount
 				}
-
 				markdown = richText.normalizeMarkdownSpacing(markdown)
 			} else {
 				const imported = await clipboardImages.importStandaloneClipboardImages(resolvedImageFiles, addImportedFiles)
@@ -243,7 +226,6 @@ export function WriteEditor() {
 				externalCount = imported.externalCount
 				failedCount = imported.failedCount
 			}
-
 			if (!markdown.trim() && plainText) markdown = plainText
 			if (!markdown.trim()) throw new Error('剪贴板内容为空或无法读取')
 
@@ -251,14 +233,12 @@ export function WriteEditor() {
 			const replacement = replaceRichTextImportToken(currentValue, token, markdown)
 			if (!replacement) throw new Error('导入位置已被移除')
 			useWriteStore.getState().updateForm({ md: replacement.value })
-
 			setTimeout(() => {
 				const currentTextarea = textareaRef.current
 				if (!currentTextarea) return
 				currentTextarea.focus()
 				currentTextarea.setSelectionRange(replacement.cursor, replacement.cursor)
 			}, 0)
-
 			toast.dismiss(loadingToast)
 			const importMessage = imageImportMessage(localizedCount, externalCount, failedCount, hasRichHtml)
 			const toastOptions = complexTableCount > 0 ? { description: '复杂表格已转换为简化文本格式。' } : undefined
@@ -292,7 +272,6 @@ export function WriteEditor() {
 			setIsImporting(false)
 		}
 	}
-
 	return (
 		<motion.div
 			initial={{ opacity: 0, scale: 0.8 }}

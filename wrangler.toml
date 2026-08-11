@@ -10,12 +10,16 @@ binding = "ASSETS"
 [build]
 command = "pnpm run build:cf"
 
+# 本次改动：Cloudflare Observability 日志默认开启 → 默认完全关闭。
+# 保留配置能力；如其他 GitHub 用户需要启用，可按 Cloudflare 文档重新开启。
 [observability]
+enabled = false
+
 [observability.logs]
-enabled = true
-# 头部采样率，1 表示 100% 采样（所有请求都会被采样）
-head_sampling_rate = 1
-# 启用调用日志（记录每次函数调用）
-invocation_logs = true
-# 持久化日志到磁盘（本地开发时有用）
-persist = true
+enabled = false
+# 0 表示 0% 采样，不记录任何请求日志
+head_sampling_rate = 0
+# 不记录 Worker 调用日志
+invocation_logs = false
+# 不持久化日志
+persist = false
