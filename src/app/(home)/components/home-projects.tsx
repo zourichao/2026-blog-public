@@ -36,10 +36,17 @@ export default function HomeProjects({ projects }: HomeProjectsProps) {
 						rel='noopener noreferrer'
 						className='group focus-visible:ring-brand flex min-w-0 items-center gap-4 bg-transparent py-2.5 pr-2.5 pl-0 transition-colors hover:bg-white/50 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset motion-reduce:transition-none sm:gap-4.5 sm:py-3 sm:pr-3 sm:pl-0 xl:min-h-28'>
 						{/* 本次改动：90×68 / 105×79 / 120×90px → 86×65 / 101×76 / 115×86px，项目图片继续缩小约 4%。 */}
-						<img src={project.image} alt='' loading='lazy' className='h-[65px] w-[86px] shrink-0 rounded-xl object-cover sm:h-[76px] sm:w-[101px] xl:h-[86px] xl:w-[115px]' />
+						{/* 本次改动：object-cover → bg-white/55 object-contain，保持项目图片原比例完整显示，不再裁切。 */}
+						<img
+							src={project.image}
+							alt=''
+							loading='lazy'
+							className='h-[65px] w-[86px] shrink-0 rounded-xl bg-white/55 object-contain sm:h-[76px] sm:w-[101px] xl:h-[86px] xl:w-[115px]'
+						/>
 						<div className='min-w-0 flex-1'>
 							<div className='flex items-start justify-between gap-2'>
-								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 group-hover:text-sky-700'>{project.name}</h3>
+								{/* 本次改动：line-clamp-2 → line-clamp-2 xl:line-clamp-1，PC 首页项目标题限制为单行，移动端保持两行。 */}
+								<h3 className='line-clamp-2 text-sm leading-5 font-semibold text-slate-900 group-hover:text-sky-700 xl:line-clamp-1'>{project.name}</h3>
 								<ExternalLink aria-hidden='true' className='mt-0.5 size-3.5 shrink-0 text-slate-400' />
 							</div>
 							<p className='mt-1 line-clamp-1 text-[13px] leading-5 text-slate-600 sm:line-clamp-2'>{project.description}</p>

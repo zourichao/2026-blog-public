@@ -5,6 +5,7 @@ import {
 	createCommit,
 	updateRef,
 	createBlob,
+	getFileSha,
 	listRepoFilesRecursive,
 	readTextFileFromRepo,
 	type TreeItem
@@ -20,6 +21,12 @@ import { formatDateTimeLocal } from '../stores/write-store'
 import { getBlogAuthor } from '@/lib/blog-author'
 import { replaceLocalImageReferences, validateLocalImageReferences } from '../lib/local-image-validation'
 import { getOrphanedArticleImagePaths } from '../lib/article-image-cleanup'
+import { prepareArticleSlugMigration } from '../lib/article-slug-migration'
+export type PushBlogResult = {
+	slug: string
+	markdown: string
+	coverPath?: string
+}
 
 export type PushBlogParams = {
 	form: {
@@ -42,7 +49,6 @@ export type PushBlogParams = {
 type CategoriesFile = {
 	categories: string[]
 }
-
 function parseCategoriesFile(content: string): string[] {
 	const data = JSON.parse(content) as unknown
 	if (Array.isArray(data)) return data.filter((item): item is string => typeof item === 'string')
@@ -51,12 +57,10 @@ function parseCategoriesFile(content: string): string[] {
 	}
 	throw new Error('分类文件格式不正确，已停止发布')
 }
-
 async function validateSelectedCategory(token: string, ref: string, category?: string): Promise<string> {
 	const selectedCategory = category?.trim() ?? ''
 	if (!selectedCategory) return ''
 	if (selectedCategory === '未分类') throw new Error('“未分类”是系统保留项，请直接选择未分类状态')
-
 	const categoriesText = await readTextFileFromRepo(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, 'public/blogs/categories.json', ref)
 	if (categoriesText === null) throw new Error('缺少分类配置文件，已停止发布')
 	const categories = parseCategoriesFile(categoriesText)
@@ -65,16 +69,11 @@ async function validateSelectedCategory(token: string, ref: string, category?: s
 	}
 	return selectedCategory
 }
-
-export async function pushBlog(params: PushBlogParams): Promise<void> {
+export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> {
 	const { form, cover, images, mode = 'create', originalSlug } = params
 	if (!form?.slug) throw new Error('需要 slug')
-	if (mode === 'edit' && originalSlug && originalSlug !== form.slug) {
-		throw new Error('编辑模式下不支持修改 slug，请保持原 slug 不变')
-	}
 
 	validateLocalImageReferences(form.md, images, cover)
-
 	// 获取认证 token（自动从全局认证状态获取）
 	const token = await getAuthToken()
 	toast.info('正在获取分支信息...')
@@ -83,7 +82,19 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	// 本次改动：发布时直接信任表单 category → 基于本次发布使用的最新 Commit 再校验一次分类，避免失效分类写回文章。
 	const validatedCategory = await validateSelectedCategory(token, latestCommitSha, form.category)
 	const basePath = `public/blogs/${form.slug}`
-	const commitMessage = mode === 'edit' ? `更新文章: ${form.slug}` : `新增文章: ${form.slug}`
+	const slugChanged = mode === 'edit' && !!originalSlug && originalSlug !== form.slug
+	const originalBasePath = originalSlug ? `public/blogs/${originalSlug}` : basePath
+	const commitMessage = slugChanged ? `更新文章 Slug: ${originalSlug} → ${form.slug}` : mode === 'edit' ? `更新文章: ${form.slug}` : `新增文章: ${form.slug}`
+
+	let originalFiles: string[] = []
+	if (slugChanged) {
+		toast.info('正在检查新 slug...')
+		const targetFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, latestCommitSha)
+		if (targetFiles.length > 0) throw new Error(`slug“${form.slug}”已存在，请更换后再发布`)
+
+		originalFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, originalBasePath, latestCommitSha)
+		if (originalFiles.length === 0) throw new Error(`原文章目录“${originalSlug}”不存在，已停止修改 slug`)
+	}
 
 	// collect all local images (content + cover)
 	const allLocalImages: Array<{ img: Extract<ImageItem, { type: 'file' }>; id: string }> = []
@@ -99,7 +110,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	}
 
 	toast.info('正在准备文件...')
-
 	const uploadedHashes = new Set<string>()
 	let mdToUpload = form.md
 	const localImagePaths = new Map<string, string>()
@@ -135,15 +145,55 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		}
 	}
 	mdToUpload = replaceLocalImageReferences(mdToUpload, localImagePaths)
-
 	// handle external cover URL
 	if (cover?.type === 'url') {
 		coverPath = cover.url
 	}
-	// 本次改动：修改文章仅更新引用 → 同一 Commit 自动删除不再引用的旧封面和正文图片。
-	if (mode === 'edit') {
+
+	if (slugChanged && originalSlug) {
+		// 本次改动：编辑模式禁止修改 slug → 将修改 slug 作为文章目录迁移，在同一 Commit 完成旧图复用、路径改写和旧目录删除。
+		toast.info('正在迁移文章目录...')
+		const migration = prepareArticleSlugMigration({
+			markdown: mdToUpload,
+			coverPath,
+			originalSlug,
+			nextSlug: form.slug
+		})
+		mdToUpload = migration.markdown
+		coverPath = migration.coverPath
+
+		const originalFileSet = new Set(originalFiles)
+		const plannedTargetPaths = new Set(treeItems.filter(item => item.sha).map(item => item.path))
+		for (const move of migration.imageMoves) {
+			if (!originalFileSet.has(move.sourcePath)) {
+				throw new Error(`旧文章图片不存在：${move.sourcePath}，已停止修改 slug`)
+			}
+			if (plannedTargetPaths.has(move.targetPath)) continue
+
+			const sha = await getFileSha(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, move.sourcePath, latestCommitSha)
+			if (!sha) throw new Error(`无法读取旧文章图片：${move.sourcePath}，已停止修改 slug`)
+
+			treeItems.push({
+				path: move.targetPath,
+				mode: '100644',
+				type: 'blob',
+				sha
+			})
+			plannedTargetPaths.add(move.targetPath)
+		}
+
+		for (const path of originalFiles) {
+			treeItems.push({
+				path,
+				mode: '100644',
+				type: 'blob',
+				sha: null
+			})
+		}
+	} else if (mode === 'edit') {
+		// 本次改动：修改文章仅更新引用 → 同一 Commit 自动删除不再引用的旧封面和正文图片。
 		toast.info('正在检查旧图片...')
-		const existingFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, GITHUB_CONFIG.BRANCH)
+		const existingFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, latestCommitSha)
 		const uploadedImagePaths = treeItems.flatMap(item => (item.sha && item.path.startsWith(`${basePath}/`) ? [item.path] : []))
 		const orphanedImagePaths = getOrphanedArticleImagePaths({
 			existingFiles,
@@ -206,7 +256,8 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 			hidden: form.hidden,
 			category: validatedCategory
 		},
-		GITHUB_CONFIG.BRANCH
+		GITHUB_CONFIG.BRANCH,
+		slugChanged ? originalSlug || undefined : undefined
 	)
 	const indexBlob = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, toBase64Utf8(indexJson), 'base64')
 	treeItems.push({
@@ -221,7 +272,6 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 	// create commit
 	toast.info('正在创建提交...')
 	const commitData = await createCommit(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, commitMessage, treeData.sha, [latestCommitSha])
-
 	// update branch reference
 	toast.info('正在更新分支...')
 	try {
@@ -234,4 +284,5 @@ export async function pushBlog(params: PushBlogParams): Promise<void> {
 		throw error
 	}
 	toast.success('发布成功！')
+	return { slug: form.slug, markdown: mdToUpload, coverPath }
 }

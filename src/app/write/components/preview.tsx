@@ -15,6 +15,7 @@ export function WritePreview({ form, coverPreviewUrl, onClose, slug }: WritePrev
 	return (
 		<div>
 			<div onClick={e => e.stopPropagation()}>
+				{/* 本次改动：写作预览沿用正式点赞 → 写作预览明确关闭点赞，避免 GET/POST 真实数据。 */}
 				<BlogPreview
 					markdown={previewData.markdown}
 					title={previewData.title}
@@ -23,6 +24,7 @@ export function WritePreview({ form, coverPreviewUrl, onClose, slug }: WritePrev
 					date={previewData.date}
 					summary={form.summary}
 					cover={coverPreviewUrl || undefined}
+					showLike={false}
 					slug={slug}
 				/>
 			</div>

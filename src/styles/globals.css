@@ -77,13 +77,6 @@
 		box-shadow: 0 5px 12px color-mix(in srgb, var(--color-brand) 50%, transparent);
 	}
 
-	.windows {
-		@apply scrollbar-none;
-		* {
-			@apply scrollbar-none;
-		}
-	}
-
 	/* Sonner Toaster styles */
 	html li[data-sonner-toast][data-styled='true'] {
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;

@@ -1,5 +1,60 @@
 [
   {
+    "slug": "momcozy_eufy_snoo_cradlewise_smart_baby",
+    "title": "智能母婴竞品洞察，从 Momcozy、eufy、SNOO 到 Cradlewise",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-07-21T22:30",
+    "summary": "从 Momcozy、eufy、SNOO、Cradlewise 四个智能母婴品牌出发，拆解吸乳器、婴儿监护器、智能摇床与智能婴儿床的产品策略和 App 体验，分析设备连接、提醒、异常恢复、AI 安抚与订阅服务背后的核心竞争力。",
+    "cover": "/blogs/momcozy_eufy_snoo_cradlewise_smart_baby/c96efd10b209c298.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
+    "slug": "smart_baby_app",
+    "title": "智能母婴App功能架构与产品规划",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-07-20T21:00",
+    "summary": "从设备接入、智能监护到数据服务与风险优先级，系统梳理智能母婴 App 的完整功能架构与产品规划方法。",
+    "cover": "/blogs/smart_baby_app/f966188bb0dbc188.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
+    "slug": "iQIBLA",
+    "title": "iQIBLA Life 用户承接与活跃提升思考",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-07-07T20:00",
+    "summary": "以 iQIBLA Life 为例，聊聊伊斯兰信仰生活、智能硬件和 App 如何围绕用户承接、每日活跃与长期回访形成产品闭环。",
+    "cover": "/blogs/iQIBLA/8f0c4eb36601719e.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
+    "slug": "myFirst_Circle",
+    "title": "myFirst Circle 儿童智能手表 App",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-06-17T20:31",
+    "summary": "复盘儿童智能手表 App 的核心体验问题。儿童手表 App 的重点不是堆功能，而是让家长更快确认孩子位置、设备状态、安全风险和下一步操作。  ",
+    "cover": "/blogs/myFirst_Circle/eadf86aac1cf2cf4.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
+    "slug": "shopify_app_integration",
+    "title": "跨境电商 App 要不要自研商城？先看 Shopify 接入成本",
+    "author": "zourichao",
+    "tags": [],
+    "date": "2026-05-07T23:57",
+    "summary": "已有 Shopify 独立站后，当前重点不是重做 App 商城，而是先接入 App，打通商城入口、账号弱绑定、订单回传、物流/保修和复购链路。本文从接入方式、H5 内嵌、账号联动、自研成本、市场资质和费用周期出发，分析为什么初期阶段更适合采用 “Shopify 轻接入 + 订单回传”，而不是直接自研完整跨境电商系统。",
+    "cover": "/blogs/shopify_app_integration/4dd135bf36d4cde7.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
     "slug": "2026",
     "title": " 原型半径：让产品思考抵达可验证的现实",
     "author": "zourichao",

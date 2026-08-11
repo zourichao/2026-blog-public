@@ -18,9 +18,10 @@ type BlogSidebarProps = {
 	summary?: string
 	toc: TocItem[]
 	slug?: string
+	showLike?: boolean
 }
 
-export function BlogSidebar({ cover, summary, toc, slug }: BlogSidebarProps) {
+export function BlogSidebar({ cover, summary, toc, slug, showLike = true }: BlogSidebarProps) {
 	const { siteContent } = useConfigStore()
 	const summaryInContent = siteContent.summaryInContent ?? false
 
@@ -49,7 +50,8 @@ export function BlogSidebar({ cover, summary, toc, slug }: BlogSidebarProps) {
 
 			<BlogToc toc={toc} delay={INIT_DELAY + ANIMATION_DELAY * 3} />
 
-			<LikeButton slug={slug} delay={(INIT_DELAY + ANIMATION_DELAY * 4) * 1000} />
+			{/* 本次改动：原始文章 slug → blog:${slug}；并支持写作预览显式关闭点赞。 */}
+			{showLike && slug && <LikeButton slug={`blog:${slug}`} delay={(INIT_DELAY + ANIMATION_DELAY * 4) * 1000} />}
 
 			<ScrollTopButton delay={INIT_DELAY + ANIMATION_DELAY * 5} />
 		</div>
