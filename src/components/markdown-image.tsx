@@ -312,7 +312,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						onWheel={stopWheelPropagation}
 						aria-label='关闭图片预览'
 						title='关闭'
-						className='absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80'>
+						className='absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/[0.32] text-[22px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.48] focus:outline-none focus:ring-2 focus:ring-white/70'>
 						×
 					</button>
 
@@ -325,7 +325,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看上一张正文图片'
 								title='上一张'
-								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80 disabled:cursor-not-allowed disabled:opacity-25'>
+								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/[0.36] text-[24px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.50] focus:outline-none focus:ring-2 focus:ring-white/70 disabled:cursor-not-allowed disabled:opacity-20'>
 								←
 							</button>
 							<button
@@ -335,10 +335,10 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看下一张正文图片'
 								title='下一张'
-								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80 disabled:cursor-not-allowed disabled:opacity-25'>
+								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/[0.36] text-[24px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.50] focus:outline-none focus:ring-2 focus:ring-white/70 disabled:cursor-not-allowed disabled:opacity-20'>
 								→
 							</button>
-							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-sm text-white shadow-lg backdrop-blur-sm' aria-live='polite'>
+							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/[0.28] px-2.5 py-1 text-[13px] text-white/90 shadow-sm backdrop-blur-sm' aria-live='polite'>
 								{activeIndex + 1} / {gallery.length}
 							</div>
 						</>
