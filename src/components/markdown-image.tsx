@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { DialogModal } from '@/components/dialog-modal'
 
+export type MarkdownImageItem = {
+	src: string
+	alt?: string
+	title?: string
+}
+
 type MarkdownImageProps = {
 	src: string
 	alt?: string
 	title?: string
+	images?: MarkdownImageItem[]
+	index?: number
 }
 
 type Point = {
@@ -42,8 +50,12 @@ const getMidpoint = (first: Point, second: Point): Point => ({
 	y: (first.y + second.y) / 2,
 })
 
-export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps) {
+export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: MarkdownImageProps) {
+	const gallery = images?.length ? images : [{ src, alt, title }]
+	const sourceIndex = clamp(index, 0, gallery.length - 1)
+
 	const [display, setDisplay] = useState(false)
+	const [activeIndex, setActiveIndex] = useState(sourceIndex)
 	const [scale, setScale] = useState(1)
 	const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
 	const [isDragging, setIsDragging] = useState(false)
@@ -54,6 +66,10 @@ export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps)
 	const offsetRef = useRef<Point>({ x: 0, y: 0 })
 	const pointersRef = useRef(new Map<number, Point>())
 	const gestureRef = useRef<GestureState>(null)
+
+	const activeImage = gallery[activeIndex] ?? gallery[sourceIndex] ?? { src, alt, title }
+	const hasPrevious = activeIndex > 0
+	const hasNext = activeIndex < gallery.length - 1
 
 	const clampOffset = useCallback((nextOffset: Point, nextScale: number): Point => {
 		const viewer = viewerRef.current
@@ -95,13 +111,25 @@ export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps)
 
 	const handleOpen = useCallback(() => {
 		resetViewer()
+		setActiveIndex(sourceIndex)
 		setDisplay(true)
-	}, [resetViewer])
+	}, [resetViewer, sourceIndex])
 
 	const handleClose = useCallback(() => {
 		resetViewer()
 		setDisplay(false)
 	}, [resetViewer])
+
+	const goToImage = useCallback(
+		(nextIndex: number) => {
+			const safeIndex = clamp(nextIndex, 0, gallery.length - 1)
+			if (safeIndex === activeIndex) return
+
+			resetViewer()
+			setActiveIndex(safeIndex)
+		},
+		[activeIndex, gallery.length, resetViewer]
+	)
 
 	useEffect(() => {
 		if (!display) return
@@ -110,6 +138,24 @@ export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps)
 		window.addEventListener('resize', handleResize)
 		return () => window.removeEventListener('resize', handleResize)
 	}, [applyTransform, display])
+
+	useEffect(() => {
+		if (!display || gallery.length <= 1) return
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === 'ArrowLeft' && hasPrevious) {
+				event.preventDefault()
+				goToImage(activeIndex - 1)
+			}
+			if (event.key === 'ArrowRight' && hasNext) {
+				event.preventDefault()
+				goToImage(activeIndex + 1)
+			}
+		}
+
+		window.addEventListener('keydown', handleKeyDown)
+		return () => window.removeEventListener('keydown', handleKeyDown)
+	}, [activeIndex, display, gallery.length, goToImage, hasNext, hasPrevious])
 
 	const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
 		event.preventDefault()
@@ -229,20 +275,24 @@ export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps)
 		if (event.target === event.currentTarget) handleClose()
 	}
 
+	const stopWheelPropagation = (event: ReactWheelEvent<HTMLElement>) => event.stopPropagation()
+
 	return (
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：基础点击预览 → PC 滚轮缩放/拖拽 + 手机双指缩放/单指拖拽 + 固定关闭按钮。 */}
+				{/* 本次改动：单图预览 → 正文图片画廊；保留跨端缩放/拖拽，并增加左右切图、方向键和张数提示。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
 					onClick={handleViewerClick}
 					className='relative flex h-[90vh] w-[calc(100vw-2rem)] max-w-none touch-none select-none items-center justify-center overflow-hidden rounded-2xl'>
 					<img
+						key={`${activeIndex}-${activeImage.src}`}
 						ref={imageRef}
-						src={src}
-						alt={alt}
+						src={activeImage.src}
+						alt={activeImage.alt ?? ''}
+						title={activeImage.title ?? ''}
 						draggable={false}
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
@@ -255,15 +305,44 @@ export function MarkdownImage({ src, alt = '', title = '' }: MarkdownImageProps)
 							cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
 						}}
 					/>
+
 					<button
 						type='button'
 						onClick={handleClose}
-						onWheel={event => event.stopPropagation()}
+						onWheel={stopWheelPropagation}
 						aria-label='关闭图片预览'
 						title='关闭'
-						className='absolute right-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80'>
+						className='absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80'>
 						×
 					</button>
+
+					{gallery.length > 1 && (
+						<>
+							<button
+								type='button'
+								disabled={!hasPrevious}
+								onClick={() => goToImage(activeIndex - 1)}
+								onWheel={stopWheelPropagation}
+								aria-label='查看上一张正文图片'
+								title='上一张'
+								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80 disabled:cursor-not-allowed disabled:opacity-25'>
+								←
+							</button>
+							<button
+								type='button'
+								disabled={!hasNext}
+								onClick={() => goToImage(activeIndex + 1)}
+								onWheel={stopWheelPropagation}
+								aria-label='查看下一张正文图片'
+								title='下一张'
+								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-2xl leading-none text-white shadow-lg backdrop-blur-sm transition hover:bg-black/75 focus:outline-none focus:ring-2 focus:ring-white/80 disabled:cursor-not-allowed disabled:opacity-25'>
+								→
+							</button>
+							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-sm text-white shadow-lg backdrop-blur-sm' aria-live='polite'>
+								{activeIndex + 1} / {gallery.length}
+							</div>
+						</>
+					)}
 				</div>
 			</DialogModal>
 		</>
