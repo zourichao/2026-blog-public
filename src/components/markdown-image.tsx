@@ -281,7 +281,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：单图预览 → 正文图片画廊；保留跨端缩放/拖拽，并增加左右切图、方向键和张数提示。 */}
+				{/* 本次改动：图片查看器控件改为无模糊高透明覆盖；交互、缩放、拖拽与切图逻辑保持不变。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
@@ -312,7 +312,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						onWheel={stopWheelPropagation}
 						aria-label='关闭图片预览'
 						title='关闭'
-						className='absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/[0.32] text-[22px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.48] focus:outline-none focus:ring-2 focus:ring-white/70'>
+						className='absolute right-2 top-2 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/25 bg-white/[0.12] text-[22px] leading-none text-black/55 transition hover:bg-white/[0.20] focus:outline-none focus:ring-2 focus:ring-black/20'>
 						×
 					</button>
 
@@ -325,7 +325,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看上一张正文图片'
 								title='上一张'
-								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/[0.36] text-[24px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.50] focus:outline-none focus:ring-2 focus:ring-white/70 disabled:cursor-not-allowed disabled:opacity-20'>
+								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:opacity-20'>
 								←
 							</button>
 							<button
@@ -335,10 +335,10 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看下一张正文图片'
 								title='下一张'
-								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/[0.36] text-[24px] leading-none text-white/95 shadow-sm backdrop-blur-sm transition hover:bg-black/[0.50] focus:outline-none focus:ring-2 focus:ring-white/70 disabled:cursor-not-allowed disabled:opacity-20'>
+								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:opacity-20'>
 								→
 							</button>
-							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/[0.28] px-2.5 py-1 text-[13px] text-white/90 shadow-sm backdrop-blur-sm' aria-live='polite'>
+							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 px-1 py-0.5 text-[13px] font-medium text-black/50 [text-shadow:0_1px_2px_rgba(255,255,255,0.85)]' aria-live='polite'>
 								{activeIndex + 1} / {gallery.length}
 							</div>
 						</>
