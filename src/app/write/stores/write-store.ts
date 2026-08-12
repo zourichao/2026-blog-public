@@ -4,6 +4,7 @@ import { hashFileSHA256 } from '@/lib/file-utils'
 import { loadBlog } from '@/lib/load-blog'
 import { DEFAULT_BLOG_AUTHOR, getBlogAuthor } from '@/lib/blog-author'
 import type { PublishForm, ImageFileAddResult, ImageItem } from '../types'
+import { getGeneratedShareImage, isGeneratedArticleImage, normalizeShareImageToWebP } from '../lib/image-webp-normalize'
 
 export const formatDateTimeLocal = (date: Date = new Date()): string => {
 	const pad = (n: number) => String(n).padStart(2, '0')
@@ -61,6 +62,28 @@ const initialForm: PublishForm = {
 	category: ''
 }
 
+type PreparedShareImage = {
+	shareFile?: File
+	shareError?: string
+}
+
+async function prepareShareImage(file: File): Promise<PreparedShareImage> {
+	// 正文粘贴链路已经在同一次 Canvas 处理中生成分享副本，优先直接复用，避免二次编码。
+	const generatedShareFile = getGeneratedShareImage(file)
+	if (generatedShareFile) return { shareFile: generatedShareFile }
+
+	// 如果正文双水印图已经生成但分享副本失败，禁止再拿双水印图加工，否则中央水印无法去除。
+	if (isGeneratedArticleImage(file)) return { shareError: '分享图生成失败' }
+
+	// 图片管理中直接选择磁盘文件时，正文文件保持现有行为不变，只额外生成分享副本。
+	try {
+		const shareFile = await normalizeShareImageToWebP(file)
+		return shareFile ? { shareFile } : { shareError: '当前图片格式暂不生成分享图' }
+	} catch (error) {
+		return { shareError: error instanceof Error ? error.message : '分享图生成失败' }
+	}
+}
+
 export const useWriteStore = create<WriteStore>((set, get) => ({
 	// Mode state
 	mode: 'create',
@@ -98,7 +121,8 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			}
 		}
 
-		const computed = await Promise.all(
+		// 保持原有哈希计算并发；新增的 Canvas 分享图处理改为逐张执行，避免多张大图同时解码造成内存峰值。
+		const hashed = await Promise.all(
 			inputFiles.map(async (file, originalIndex) => {
 				if (!file.type.startsWith('image/')) {
 					return { originalIndex, file, error: '不支持的文件类型' } as const
@@ -117,6 +141,23 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			})
 		)
 
+		const computed: Array<
+			| Extract<(typeof hashed)[number], { error: string }>
+			| (Extract<(typeof hashed)[number], { hash: string }> & PreparedShareImage)
+		> = []
+		for (const result of hashed) {
+			if ('error' in result) {
+				computed.push(result)
+				continue
+			}
+			if (!canApply()) {
+				computed.push({ ...result, shareError: '图片导入已取消' })
+				continue
+			}
+			const share = await prepareShareImage(result.file)
+			computed.push({ ...result, ...share })
+		}
+
 		const results: ImageFileAddResult[] = computed.map(result => ({
 			originalIndex: result.originalIndex,
 			item: null,
@@ -126,7 +167,6 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 		const successful = computed.filter(
 			(result): result is Extract<(typeof computed)[number], { hash: string }> => 'hash' in result
 		)
-
 		if (successful.length === 0) return results
 		if (!canApply()) {
 			for (const result of successful) {
@@ -156,7 +196,6 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			const fileItemsByHash = new Map<string, Extract<ImageItem, { type: 'file' }>>()
 			const usedIds = new Set(state.images.map(item => item.id))
 			const newItems: Extract<ImageItem, { type: 'file' }>[] = []
-
 			for (const item of state.images) {
 				if (item.type === 'file' && item.hash && !fileItemsByHash.has(item.hash)) {
 					fileItemsByHash.set(item.hash, item)
@@ -174,20 +213,26 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 					continue
 				}
 
+				let previewUrl: string | undefined
+				let sharePreviewUrl: string | undefined
 				try {
 					let id = Math.random().toString(36).slice(2, 10)
 					while (usedIds.has(id)) id = Math.random().toString(36).slice(2, 10)
 					usedIds.add(id)
 
+					previewUrl = URL.createObjectURL(result.file)
+					if (result.shareFile) sharePreviewUrl = URL.createObjectURL(result.shareFile)
 					const item: Extract<ImageItem, { type: 'file' }> = {
 						id,
 						type: 'file',
 						file: result.file,
-						previewUrl: URL.createObjectURL(result.file),
+						previewUrl,
 						filename: result.file.name,
-						hash: result.hash
+						hash: result.hash,
+						...(result.shareFile ? { shareFile: result.shareFile } : {}),
+						...(sharePreviewUrl ? { sharePreviewUrl } : {}),
+						...(result.shareError ? { shareError: result.shareError } : {})
 					}
-
 					fileItemsByHash.set(result.hash, item)
 					newItems.push(item)
 					results[result.originalIndex] = {
@@ -196,6 +241,8 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 						status: 'added'
 					}
 				} catch (error) {
+					if (previewUrl) URL.revokeObjectURL(previewUrl)
+					if (sharePreviewUrl) URL.revokeObjectURL(sharePreviewUrl)
 					results[result.originalIndex] = {
 						originalIndex: result.originalIndex,
 						item: null,
@@ -207,7 +254,6 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 
 			return newItems.length > 0 ? { images: [...newItems, ...state.images] } : state
 		})
-
 		return results
 	},
 	addFiles: async (files: FileList | File[]) => {
@@ -222,7 +268,7 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			for (const it of state.images) {
 				if (it.type === 'file' && it.id === id) {
 					URL.revokeObjectURL(it.previewUrl)
-
+					if (it.sharePreviewUrl) URL.revokeObjectURL(it.sharePreviewUrl)
 					if (it.id === state.cover?.id) {
 						set({ cover: null })
 					}
@@ -246,7 +292,6 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 			set({ loading: true, imageSession: loadSession })
 			const blog = await loadBlog(slug)
 			if (get().imageSession !== loadSession) return
-
 			// Parse images from markdown
 			const images: ImageItem[] = []
 			const imageRegex = /!\[.*?\]\((.*?)\)/g
@@ -289,7 +334,6 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 				cover,
 				loading: false
 			})
-
 			if (get().imageSession === loadSession) toast.success('博客加载成功')
 		} catch (err: any) {
 			if (get().imageSession !== loadSession) return
@@ -307,10 +351,12 @@ export const useWriteStore = create<WriteStore>((set, get) => ({
 		for (const img of images) {
 			if (img.type === 'file') {
 				URL.revokeObjectURL(img.previewUrl)
+				if (img.sharePreviewUrl) URL.revokeObjectURL(img.sharePreviewUrl)
 			}
 		}
 		if (cover?.type === 'file') {
 			URL.revokeObjectURL(cover.previewUrl)
+			if (cover.sharePreviewUrl) URL.revokeObjectURL(cover.sharePreviewUrl)
 		}
 
 		set(state => ({

@@ -10,6 +10,7 @@ import { rewriteArticleImageUrlForSlug } from '../lib/article-slug-migration'
 export function usePublish() {
 	const { loading, setLoading, form, cover, images, mode, originalSlug } = useWriteStore()
 	const { isAuth, setPrivateKey } = useAuthStore()
+
 	const onChoosePrivateKey = useCallback(
 		async (file: File) => {
 			const pem = await readFileAsText(file)
@@ -29,24 +30,23 @@ export function usePublish() {
 				originalSlug
 			})
 
-			if (mode === 'edit') {
-				const slugChanged = !!originalSlug && originalSlug !== form.slug
-
-				// 本次改动：Slug 修改后仅更新 GitHub → 同步更新编辑器内的 originalSlug、正文图片、图片列表和封面 URL，避免二次发布重新写回旧路径。
-				useWriteStore.setState(state => ({
-					originalSlug: form.slug,
-					form: slugChanged ? { ...state.form, md: result.markdown } : state.form,
-					images: slugChanged
-						? state.images.map(item =>
-								item.type === 'url' ? { ...item, url: rewriteArticleImageUrlForSlug(item.url, originalSlug!, form.slug) } : item
-							)
-						: state.images,
-					cover:
-						slugChanged && state.cover?.type === 'url'
-							? { ...state.cover, url: rewriteArticleImageUrlForSlug(state.cover.url, originalSlug!, form.slug) }
-							: state.cover
-				}))
-			}
+			const slugChanged = mode === 'edit' && !!originalSlug && originalSlug !== form.slug
+			// 本次改动：发布成功后给本地正文图片记录已落库的分享图地址；不改变 ImageItem 的 file 身份和正文 local-image 编辑状态。
+			useWriteStore.setState(state => ({
+				...(mode === 'edit' ? { originalSlug: form.slug } : {}),
+				form: slugChanged ? { ...state.form, md: result.markdown } : state.form,
+				images: state.images.map(item => {
+					if (item.type === 'url') {
+						return slugChanged ? { ...item, url: rewriteArticleImageUrlForSlug(item.url, originalSlug!, form.slug) } : item
+					}
+					if (!item.shareFile || !item.hash) return item
+					return { ...item, publishedShareUrl: `/blogs/${form.slug}/share/${item.hash}.webp` }
+				}),
+				cover:
+					slugChanged && state.cover?.type === 'url'
+						? { ...state.cover, url: rewriteArticleImageUrlForSlug(state.cover.url, originalSlug!, form.slug) }
+						: state.cover
+			}))
 
 			const successMsg = mode === 'edit' ? '更新成功' : '发布成功'
 			toast.success(successMsg)
@@ -57,6 +57,7 @@ export function usePublish() {
 			setLoading(false)
 		}
 	}, [form, cover, images, mode, originalSlug, setLoading])
+
 	const onDelete = useCallback(async () => {
 		const targetSlug = originalSlug || form.slug
 		if (!targetSlug) {

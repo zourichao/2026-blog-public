@@ -20,8 +20,9 @@ import { toast } from 'sonner'
 import { formatDateTimeLocal } from '../stores/write-store'
 import { getBlogAuthor } from '@/lib/blog-author'
 import { replaceLocalImageReferences, validateLocalImageReferences } from '../lib/local-image-validation'
-import { getOrphanedArticleImagePaths } from '../lib/article-image-cleanup'
+import { getOrphanedArticleImagePaths, getReferencedArticleImagePaths } from '../lib/article-image-cleanup'
 import { prepareArticleSlugMigration } from '../lib/article-slug-migration'
+
 export type PushBlogResult = {
 	slug: string
 	markdown: string
@@ -49,6 +50,7 @@ export type PushBlogParams = {
 type CategoriesFile = {
 	categories: string[]
 }
+
 function parseCategoriesFile(content: string): string[] {
 	const data = JSON.parse(content) as unknown
 	if (Array.isArray(data)) return data.filter((item): item is string => typeof item === 'string')
@@ -57,6 +59,7 @@ function parseCategoriesFile(content: string): string[] {
 	}
 	throw new Error('分类文件格式不正确，已停止发布')
 }
+
 async function validateSelectedCategory(token: string, ref: string, category?: string): Promise<string> {
 	const selectedCategory = category?.trim() ?? ''
 	if (!selectedCategory) return ''
@@ -69,11 +72,25 @@ async function validateSelectedCategory(token: string, ref: string, category?: s
 	}
 	return selectedCategory
 }
+
+function getShareImageRepoPath(articleImageRepoPath: string, slug: string): string | null {
+	const normalizedSlug = slug.trim().replace(/^\/+|\/+$/g, '')
+	if (!normalizedSlug) return null
+	const basePath = `public/blogs/${normalizedSlug}/`
+	if (!articleImageRepoPath.startsWith(basePath)) return null
+	const relativePath = articleImageRepoPath.slice(basePath.length)
+	// 分享图只和文章目录根部的正文图片一一对应；share/ 本身及其他子目录不再次派生。
+	if (!relativePath || relativePath.includes('/')) return null
+	const extensionIndex = relativePath.lastIndexOf('.')
+	if (extensionIndex <= 0) return null
+	return `${basePath}share/${relativePath.slice(0, extensionIndex)}.webp`
+}
+
 export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> {
 	const { form, cover, images, mode = 'create', originalSlug } = params
 	if (!form?.slug) throw new Error('需要 slug')
-
 	validateLocalImageReferences(form.md, images, cover)
+
 	// 获取认证 token（自动从全局认证状态获取）
 	const token = await getAuthToken()
 	toast.info('正在获取分支信息...')
@@ -85,23 +102,24 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 	const slugChanged = mode === 'edit' && !!originalSlug && originalSlug !== form.slug
 	const originalBasePath = originalSlug ? `public/blogs/${originalSlug}` : basePath
 	const commitMessage = slugChanged ? `更新文章 Slug: ${originalSlug} → ${form.slug}` : mode === 'edit' ? `更新文章: ${form.slug}` : `新增文章: ${form.slug}`
-
 	let originalFiles: string[] = []
+
 	if (slugChanged) {
 		toast.info('正在检查新 slug...')
 		const targetFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, latestCommitSha)
 		if (targetFiles.length > 0) throw new Error(`slug“${form.slug}”已存在，请更换后再发布`)
-
 		originalFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, originalBasePath, latestCommitSha)
 		if (originalFiles.length === 0) throw new Error(`原文章目录“${originalSlug}”不存在，已停止修改 slug`)
 	}
 
 	// collect all local images (content + cover)
 	const allLocalImages: Array<{ img: Extract<ImageItem, { type: 'file' }>; id: string }> = []
+	const contentLocalImageIds = new Set<string>()
 	// add content images
 	for (const img of images || []) {
 		if (img.type === 'file') {
 			allLocalImages.push({ img, id: img.id })
+			contentLocalImageIds.add(img.id)
 		}
 	}
 	// add cover if local
@@ -111,11 +129,13 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 
 	toast.info('正在准备文件...')
 	const uploadedHashes = new Set<string>()
+	const uploadedSharePaths = new Set<string>()
 	let mdToUpload = form.md
 	const localImagePaths = new Map<string, string>()
 	let coverPath: string | undefined
 	// prepare tree items for all files
 	const treeItems: TreeItem[] = []
+
 	// process all images
 	if (allLocalImages.length > 0) {
 		toast.info('正在上传图片...')
@@ -137,6 +157,23 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 				})
 				uploadedHashes.add(hash)
 			}
+
+			// 本次改动：正文图片额外上传 share/{同 hash}.webp；正文原文件名、路径和 Markdown 映射完全不变。
+			if (contentLocalImageIds.has(id) && img.shareFile) {
+				const sharePath = `${basePath}/share/${hash}.webp`
+				if (!uploadedSharePaths.has(sharePath)) {
+					const shareBase64 = await fileToBase64NoPrefix(img.shareFile)
+					const shareBlobData = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, shareBase64, 'base64')
+					treeItems.push({
+						path: sharePath,
+						mode: '100644',
+						type: 'blob',
+						sha: shareBlobData.sha
+					})
+					uploadedSharePaths.add(sharePath)
+				}
+			}
+
 			localImagePaths.set(id, publicPath)
 			// set cover path if this is the cover
 			if (cover?.type === 'file' && cover.id === id) {
@@ -144,7 +181,9 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 			}
 		}
 	}
+
 	mdToUpload = replaceLocalImageReferences(mdToUpload, localImagePaths)
+
 	// handle external cover URL
 	if (cover?.type === 'url') {
 		coverPath = cover.url
@@ -153,6 +192,7 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 	if (slugChanged && originalSlug) {
 		// 本次改动：编辑模式禁止修改 slug → 将修改 slug 作为文章目录迁移，在同一 Commit 完成旧图复用、路径改写和旧目录删除。
 		toast.info('正在迁移文章目录...')
+		const referencedOldContentPaths = getReferencedArticleImagePaths(mdToUpload, originalSlug)
 		const migration = prepareArticleSlugMigration({
 			markdown: mdToUpload,
 			coverPath,
@@ -161,25 +201,43 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 		})
 		mdToUpload = migration.markdown
 		coverPath = migration.coverPath
-
 		const originalFileSet = new Set(originalFiles)
 		const plannedTargetPaths = new Set(treeItems.filter(item => item.sha).map(item => item.path))
+
 		for (const move of migration.imageMoves) {
 			if (!originalFileSet.has(move.sourcePath)) {
 				throw new Error(`旧文章图片不存在：${move.sourcePath}，已停止修改 slug`)
 			}
-			if (plannedTargetPaths.has(move.targetPath)) continue
+			if (!plannedTargetPaths.has(move.targetPath)) {
+				const sha = await getFileSha(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, move.sourcePath, latestCommitSha)
+				if (!sha) throw new Error(`无法读取旧文章图片：${move.sourcePath}，已停止修改 slug`)
 
-			const sha = await getFileSha(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, move.sourcePath, latestCommitSha)
-			if (!sha) throw new Error(`无法读取旧文章图片：${move.sourcePath}，已停止修改 slug`)
+				treeItems.push({
+					path: move.targetPath,
+					mode: '100644',
+					type: 'blob',
+					sha
+				})
+				plannedTargetPaths.add(move.targetPath)
+			}
 
-			treeItems.push({
-				path: move.targetPath,
-				mode: '100644',
-				type: 'blob',
-				sha
-			})
-			plannedTargetPaths.add(move.targetPath)
+			// 只有正文仍引用的旧图片才迁移其分享副本；封面独有图片不额外维护分享图。
+			if (referencedOldContentPaths.has(move.sourcePath)) {
+				const sourceSharePath = getShareImageRepoPath(move.sourcePath, originalSlug)
+				const targetSharePath = getShareImageRepoPath(move.targetPath, form.slug)
+				if (sourceSharePath && targetSharePath && originalFileSet.has(sourceSharePath) && !plannedTargetPaths.has(targetSharePath)) {
+					const shareSha = await getFileSha(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, sourceSharePath, latestCommitSha)
+					if (shareSha) {
+						treeItems.push({
+							path: targetSharePath,
+							mode: '100644',
+							type: 'blob',
+							sha: shareSha
+						})
+						plannedTargetPaths.add(targetSharePath)
+					}
+				}
+			}
 		}
 
 		for (const path of originalFiles) {
@@ -191,16 +249,21 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 			})
 		}
 	} else if (mode === 'edit') {
-		// 本次改动：修改文章仅更新引用 → 同一 Commit 自动删除不再引用的旧封面和正文图片。
+		// 本次改动：修改文章仅更新引用 → 同一 Commit 自动删除不再引用的旧封面和正文图片；分享图跟随正文引用一并保留/清理。
 		toast.info('正在检查旧图片...')
 		const existingFiles = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, latestCommitSha)
 		const uploadedImagePaths = treeItems.flatMap(item => (item.sha && item.path.startsWith(`${basePath}/`) ? [item.path] : []))
+		const referencedContentPaths = getReferencedArticleImagePaths(mdToUpload, form.slug)
+		const pairedSharePaths = Array.from(referencedContentPaths).flatMap(path => {
+			const sharePath = getShareImageRepoPath(path, form.slug)
+			return sharePath ? [sharePath] : []
+		})
 		const orphanedImagePaths = getOrphanedArticleImagePaths({
 			existingFiles,
 			markdown: mdToUpload,
 			coverPath,
 			slug: form.slug,
-			additionalKeepPaths: uploadedImagePaths
+			additionalKeepPaths: [...uploadedImagePaths, ...pairedSharePaths]
 		})
 		for (const path of orphanedImagePaths) {
 			treeItems.push({
@@ -211,6 +274,7 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 			})
 		}
 	}
+
 	toast.info('正在创建文件...')
 	// create blob for index.md
 	const mdBlob = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, toBase64Utf8(mdToUpload), 'base64')
@@ -220,6 +284,7 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 		type: 'blob',
 		sha: mdBlob.sha
 	})
+
 	// create blob for config.json
 	const dateStr = form.date || formatDateTimeLocal()
 	const author = getBlogAuthor(form.author)
@@ -240,6 +305,7 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 		type: 'blob',
 		sha: configBlob.sha
 	})
+
 	// prepare and create blob for blogs index
 	const indexJson = await prepareBlogsIndex(
 		token,
@@ -266,6 +332,7 @@ export async function pushBlog(params: PushBlogParams): Promise<PushBlogResult> 
 		type: 'blob',
 		sha: indexBlob.sha
 	})
+
 	// create tree
 	toast.info('正在创建文件树...')
 	const treeData = await createTree(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, treeItems, latestCommitSha)

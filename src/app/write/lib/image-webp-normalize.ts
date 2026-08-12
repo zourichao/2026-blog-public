@@ -3,7 +3,7 @@ export type ImageWebPNormalizeOptions = {
 	maxHeight?: number
 	quality: number
 	mimeType: 'image/webp'
-	watermark?: 'article'
+	watermark?: 'article' | 'share'
 }
 
 export type ArticleWatermarkOptions = {
@@ -25,7 +25,7 @@ export type ArticleWatermarkOptions = {
 	centerYRatio: number
 }
 
-// 本次改动：正文图片无品牌标识 → 固定绘制“右下角品牌水印 + 中央极淡水印”，第一版暂不按图片尺寸自适应。
+// 正文公开图继续保持“右下角品牌水印 + 中央极淡水印”；分享图只使用同一套右下角水印参数。
 export const ARTICLE_WATERMARK_OPTIONS: ArticleWatermarkOptions = {
 	cornerText: '原型半径 · Zourichao',
 	centerText: '原型半径',
@@ -45,7 +45,7 @@ export const ARTICLE_WATERMARK_OPTIONS: ArticleWatermarkOptions = {
 	centerYRatio: 0.58
 }
 
-// 本次改动：正文图片参数保持最大宽度 1000 / Q88 → 继续保持不变，避免影响既有正文粘贴链路。
+// 正文图片参数冻结：最大宽度 1000 / Q88 / WebP / 双水印。
 export const IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
 	maxWidth: 1000,
 	quality: 0.88,
@@ -53,7 +53,15 @@ export const IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
 	watermark: 'article'
 }
 
-// 本次改动：封面原图直接进入图片列表 → 封面先按最大尺寸 400×300 / Q90 转为真正 WebP，再进入图片列表。
+// 本次改动：新增外部分享图；压缩转换参数与正文保持一致，只保留右下角单水印。
+export const SHARE_IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
+	maxWidth: 1000,
+	quality: 0.88,
+	mimeType: 'image/webp',
+	watermark: 'share'
+}
+
+// 封面继续保持最大尺寸 400×300 / Q90 / 无水印。
 export const COVER_IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
 	maxWidth: 400,
 	maxHeight: 300,
@@ -63,12 +71,15 @@ export const COVER_IMAGE_WEBP_NORMALIZE_OPTIONS: ImageWebPNormalizeOptions = {
 
 const NORMALIZABLE_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
+// normalizeImageToWebP 的返回值仍然是原来的 File；分享副本只在当前编辑会话内用 WeakMap 绑定，避免改动现有调用签名。
+const generatedShareImages = new WeakMap<File, File>()
+const generatedArticleImages = new WeakSet<File>()
+
 export type ContainedImageSize = {
 	width: number
 	height: number
 }
 
-// 本次改动：正文继续仅限制最大宽度；封面改为限制最大尺寸 400×300。统一使用“边界内等比缩小，不放大”。
 export function calculateContainedImageSize(
 	width: number,
 	height: number,
@@ -84,7 +95,6 @@ export function calculateContainedImageSize(
 	if (typeof maxHeight !== 'undefined' && (!Number.isFinite(maxHeight) || maxHeight <= 0)) {
 		throw new Error('图片最大高度无效')
 	}
-
 	const widthScale = maxWidth / width
 	const heightScale = typeof maxHeight === 'number' ? maxHeight / height : Number.POSITIVE_INFINITY
 	const scale = Math.min(1, widthScale, heightScale)
@@ -146,7 +156,6 @@ async function decodeWithImageElement(file: File): Promise<DecodedImage> {
 	if (typeof Image === 'undefined' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
 		throw new Error('当前浏览器无法解码图片')
 	}
-
 	const objectUrl = URL.createObjectURL(file)
 	const image = new Image()
 	image.decoding = 'async'
@@ -209,7 +218,32 @@ function fillRoundedRect(
 	context.fillRect(x, y, width, height)
 }
 
-// 本次改动：正文图片无水印 → 在最终尺寸 Canvas 上先绘制中央极淡水印，再绘制右下角品牌水印。
+export function drawArticleCornerWatermark(
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number,
+	options: ArticleWatermarkOptions = ARTICLE_WATERMARK_OPTIONS
+) {
+	context.save()
+	context.textAlign = 'left'
+	context.textBaseline = 'middle'
+	context.font = `${options.cornerFontWeight} ${options.cornerFontSize}px ${options.fontFamily}`
+	const textWidth = context.measureText(options.cornerText).width
+	const boxWidth = textWidth + options.cornerPaddingX * 2
+	const boxHeight = options.cornerFontSize + options.cornerPaddingY * 2
+	const boxX = width - options.cornerMargin - boxWidth
+	const boxY = height - options.cornerMargin - boxHeight
+	context.globalAlpha = options.cornerBackgroundAlpha
+	context.fillStyle = '#000000'
+	fillRoundedRect(context, boxX, boxY, boxWidth, boxHeight, options.cornerRadius)
+
+	context.globalAlpha = options.cornerTextAlpha
+	context.fillStyle = '#ffffff'
+	context.fillText(options.cornerText, boxX + options.cornerPaddingX, boxY + boxHeight / 2)
+	context.restore()
+}
+
+// 正文公开图继续按“中央极淡 → 右下角品牌”顺序绘制，现有视觉不改。
 export function drawArticleWatermark(
 	context: CanvasRenderingContext2D,
 	width: number,
@@ -227,24 +261,51 @@ export function drawArticleWatermark(
 	context.fillText(options.centerText, 0, 0)
 	context.restore()
 
-	context.save()
-	context.textAlign = 'left'
-	context.textBaseline = 'middle'
-	context.font = `${options.cornerFontWeight} ${options.cornerFontSize}px ${options.fontFamily}`
-	const textWidth = context.measureText(options.cornerText).width
-	const boxWidth = textWidth + options.cornerPaddingX * 2
-	const boxHeight = options.cornerFontSize + options.cornerPaddingY * 2
-	const boxX = width - options.cornerMargin - boxWidth
-	const boxY = height - options.cornerMargin - boxHeight
+	drawArticleCornerWatermark(context, width, height, options)
+}
 
-	context.globalAlpha = options.cornerBackgroundAlpha
-	context.fillStyle = '#000000'
-	fillRoundedRect(context, boxX, boxY, boxWidth, boxHeight, options.cornerRadius)
+function createCanvas(width: number, height: number): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } {
+	const canvas = document.createElement('canvas')
+	canvas.width = width
+	canvas.height = height
+	const context = canvas.getContext('2d')
+	if (!context) throw new Error('当前浏览器无法创建图片处理画布')
+	return { canvas, context }
+}
 
-	context.globalAlpha = options.cornerTextAlpha
-	context.fillStyle = '#ffffff'
-	context.fillText(options.cornerText, boxX + options.cornerPaddingX, boxY + boxHeight / 2)
-	context.restore()
+async function createWebPFile(canvas: HTMLCanvasElement, sourceFile: File, options: ImageWebPNormalizeOptions): Promise<File> {
+	const webpBlob = await canvasToWebPBlob(canvas, options)
+	if (!(await isWebPEncodedBlob(webpBlob))) {
+		throw new Error('当前浏览器未真正生成 WebP 图片')
+	}
+	return new File([webpBlob], buildWebPFilename(sourceFile.name), {
+		type: options.mimeType,
+		lastModified: sourceFile.lastModified || Date.now()
+	})
+}
+
+/**
+ * 取得 normalizeImageToWebP 在同一次正文处理里生成的分享副本。
+ * 只在当前编辑会话有效；真正发布后由 ImageItem.shareFile 持有，不依赖此缓存。
+ */
+export function getGeneratedShareImage(file: File): File | undefined {
+	return generatedShareImages.get(file)
+}
+
+/**
+ * 标记文件是否由正文双水印处理生成，用于避免分享图生成失败后再从双水印图二次加工。
+ */
+export function isGeneratedArticleImage(file: File): boolean {
+	return generatedArticleImages.has(file)
+}
+
+/**
+ * 单独生成外部分享图：最大宽度 1000、WebP Q88、仅右下角“原型半径 · Zourichao”。
+ * 不处理 GIF 等现有正文归一化链路明确跳过的格式，避免改变原有格式策略。
+ */
+export async function normalizeShareImageToWebP(file: File): Promise<File | null> {
+	if (!shouldNormalizeImageToWebP(file)) return null
+	return normalizeImageToWebP(file, SHARE_IMAGE_WEBP_NORMALIZE_OPTIONS)
 }
 
 /**
@@ -266,27 +327,32 @@ export async function normalizeImageToWebP(
 	const decoded = await decodeImage(file)
 	try {
 		const target = calculateContainedImageSize(decoded.width, decoded.height, options.maxWidth, options.maxHeight)
-		const canvas = document.createElement('canvas')
-		canvas.width = target.width
-		canvas.height = target.height
-		const context = canvas.getContext('2d')
-		if (!context) throw new Error('当前浏览器无法创建图片处理画布')
+		const { canvas, context } = createCanvas(target.width, target.height)
 		context.drawImage(decoded.source, 0, 0, target.width, target.height)
 
-		// 本次改动：正文缩放后直接编码 WebP → 正文先烧入双层品牌水印；封面 options 不含 watermark，因此保持无水印。
+		let shareFile: File | undefined
 		if (options.watermark === 'article') {
+			// 本次改动：分享图从“已缩放但尚未烧入正文水印”的同一处理源分叉，避免中央水印残留和二次压缩。
+			try {
+				const { canvas: shareCanvas, context: shareContext } = createCanvas(target.width, target.height)
+				shareContext.drawImage(canvas, 0, 0, target.width, target.height)
+				drawArticleCornerWatermark(shareContext, target.width, target.height)
+				shareFile = await createWebPFile(shareCanvas, file, SHARE_IMAGE_WEBP_NORMALIZE_OPTIONS)
+			} catch {
+				// 分享图是附属能力：失败不能阻断现有正文图片生成与发布主链路。
+				shareFile = undefined
+			}
 			drawArticleWatermark(context, target.width, target.height)
+		} else if (options.watermark === 'share') {
+			drawArticleCornerWatermark(context, target.width, target.height)
 		}
 
-		const webpBlob = await canvasToWebPBlob(canvas, options)
-		if (!(await isWebPEncodedBlob(webpBlob))) {
-			throw new Error('当前浏览器未真正生成 WebP 图片')
+		const normalizedFile = await createWebPFile(canvas, file, options)
+		if (options.watermark === 'article') {
+			generatedArticleImages.add(normalizedFile)
+			if (shareFile) generatedShareImages.set(normalizedFile, shareFile)
 		}
-
-		return new File([webpBlob], buildWebPFilename(file.name), {
-			type: options.mimeType,
-			lastModified: file.lastModified || Date.now()
-		})
+		return normalizedFile
 	} finally {
 		decoded.cleanup()
 	}
