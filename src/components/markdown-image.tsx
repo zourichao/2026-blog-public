@@ -46,6 +46,7 @@ type GestureState =
 const MIN_SCALE = 0.5
 const MAX_SCALE = 4
 const SWIPE_THRESHOLD = 56
+const EDGE_SWIPE_THRESHOLD = 56
 const SWIPE_AXIS_RATIO = 1.1
 const BASE_SCALE_EPSILON = 0.02
 const DESKTOP_NAV_ZONE_RATIO = 0.22
@@ -81,20 +82,29 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	const hasPrevious = activeIndex > 0
 	const hasNext = activeIndex < gallery.length - 1
 
-	const clampOffset = useCallback((nextOffset: Point, nextScale: number): Point => {
+	const getOffsetBounds = useCallback((nextScale: number) => {
 		const viewer = viewerRef.current
 		const image = imageRef.current
 
-		if (!viewer || !image || nextScale <= 1) return { x: 0, y: 0 }
-
-		const maxX = Math.max(0, (image.clientWidth * nextScale - viewer.clientWidth) / 2)
-		const maxY = Math.max(0, (image.clientHeight * nextScale - viewer.clientHeight) / 2)
+		if (!viewer || !image || nextScale <= 1) return { maxX: 0, maxY: 0 }
 
 		return {
-			x: clamp(nextOffset.x, -maxX, maxX),
-			y: clamp(nextOffset.y, -maxY, maxY),
+			maxX: Math.max(0, (image.clientWidth * nextScale - viewer.clientWidth) / 2),
+			maxY: Math.max(0, (image.clientHeight * nextScale - viewer.clientHeight) / 2),
 		}
 	}, [])
+
+	const clampOffset = useCallback(
+		(nextOffset: Point, nextScale: number): Point => {
+			const { maxX, maxY } = getOffsetBounds(nextScale)
+
+			return {
+				x: clamp(nextOffset.x, -maxX, maxX),
+				y: clamp(nextOffset.y, -maxY, maxY),
+			}
+		},
+		[getOffsetBounds]
+	)
 
 	const applyTransform = useCallback(
 		(nextScale: number, nextOffset: Point = offsetRef.current) => {
@@ -280,6 +290,26 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 			? { x: event.clientX - gesture.startPoint.x, y: event.clientY - gesture.startPoint.y }
 			: null
 
+		const shouldHandleEdgeSwipe =
+			!cancelled &&
+			gesture?.type === 'drag' &&
+			gesture.pointerId === event.pointerId &&
+			event.pointerType === 'touch' &&
+			pointersRef.current.size === 1 &&
+			scaleRef.current > 1 + BASE_SCALE_EPSILON
+
+		let edgeSwipeDirection: 'previous' | 'next' | null = null
+		if (shouldHandleEdgeSwipe) {
+			const deltaX = event.clientX - gesture.startPoint.x
+			const deltaY = event.clientY - gesture.startPoint.y
+			const { maxX } = getOffsetBounds(scaleRef.current)
+			const rawOffsetX = gesture.startOffset.x + deltaX
+			const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY) * SWIPE_AXIS_RATIO
+
+			if (isHorizontalSwipe && rawOffsetX <= -maxX - EDGE_SWIPE_THRESHOLD && hasNext) edgeSwipeDirection = 'next'
+			if (isHorizontalSwipe && rawOffsetX >= maxX + EDGE_SWIPE_THRESHOLD && hasPrevious) edgeSwipeDirection = 'previous'
+		}
+
 		pointersRef.current.delete(event.pointerId)
 		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
 			event.currentTarget.releasePointerCapture(event.pointerId)
@@ -294,6 +324,13 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 			if (swipeDelta.x < 0 && hasNext) goToImage(activeIndex + 1)
 			if (swipeDelta.x > 0 && hasPrevious) goToImage(activeIndex - 1)
+			return
+		}
+
+		if (edgeSwipeDirection) {
+			gestureRef.current = null
+			setIsDragging(false)
+			goToImage(edgeSwipeDirection === 'next' ? activeIndex + 1 : activeIndex - 1)
 			return
 		}
 
@@ -343,7 +380,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：PC 左右区域 Hover 显示导航；手机 100%/未放大状态左右滑切图，放大后继续拖图。 */}
+				{/* 本次改动：PC 改为无圆圈 Chevron Hover 导航；手机放大后拖到边缘继续滑可接力切图。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
@@ -390,8 +427,8 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								aria-label='查看上一张正文图片'
 								title='上一张'
 								tabIndex={-1}
-								className={`absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition-[opacity,background-color] duration-150 hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 md:flex ${hoverNavigation === 'previous' && hasPrevious ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
-								←
+								className={`absolute left-3 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center text-[34px] font-light leading-none text-black/65 [text-shadow:0_1px_2px_rgba(255,255,255,0.9)] transition-opacity duration-150 md:flex ${hoverNavigation === 'previous' && hasPrevious ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
+								‹
 							</button>
 							<button
 								type='button'
@@ -401,8 +438,8 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								aria-label='查看下一张正文图片'
 								title='下一张'
 								tabIndex={-1}
-								className={`absolute right-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition-[opacity,background-color] duration-150 hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 md:flex ${hoverNavigation === 'next' && hasNext ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
-								→
+								className={`absolute right-3 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center text-[34px] font-light leading-none text-black/65 [text-shadow:0_1px_2px_rgba(255,255,255,0.9)] transition-opacity duration-150 md:flex ${hoverNavigation === 'next' && hasNext ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
+								›
 							</button>
 							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 px-1 py-0.5 text-[13px] font-medium text-black/50 [text-shadow:0_1px_2px_rgba(255,255,255,0.85)]' aria-live='polite'>
 								{activeIndex + 1} / {gallery.length}
