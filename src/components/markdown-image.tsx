@@ -30,6 +30,11 @@ type GestureState =
 			startOffset: Point
 	  }
 	| {
+			type: 'swipe'
+			pointerId: number
+			startPoint: Point
+	  }
+	| {
 			type: 'pinch'
 			startDistance: number
 			startScale: number
@@ -40,6 +45,10 @@ type GestureState =
 
 const MIN_SCALE = 0.5
 const MAX_SCALE = 4
+const SWIPE_THRESHOLD = 56
+const SWIPE_AXIS_RATIO = 1.1
+const BASE_SCALE_EPSILON = 0.02
+const DESKTOP_NAV_ZONE_RATIO = 0.22
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -59,6 +68,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	const [scale, setScale] = useState(1)
 	const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
 	const [isDragging, setIsDragging] = useState(false)
+	const [hoverNavigation, setHoverNavigation] = useState<'previous' | 'next' | null>(null)
 
 	const viewerRef = useRef<HTMLDivElement>(null)
 	const imageRef = useRef<HTMLImageElement>(null)
@@ -111,12 +121,14 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 	const handleOpen = useCallback(() => {
 		resetViewer()
+		setHoverNavigation(null)
 		setActiveIndex(sourceIndex)
 		setDisplay(true)
 	}, [resetViewer, sourceIndex])
 
 	const handleClose = useCallback(() => {
 		resetViewer()
+		setHoverNavigation(null)
 		setDisplay(false)
 	}, [resetViewer])
 
@@ -190,7 +202,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 			return
 		}
 
-		if (scaleRef.current > 1) {
+		if (scaleRef.current > 1 + BASE_SCALE_EPSILON) {
 			gestureRef.current = {
 				type: 'drag',
 				pointerId: event.pointerId,
@@ -198,6 +210,15 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 				startOffset: offsetRef.current,
 			}
 			setIsDragging(true)
+			return
+		}
+
+		if (event.pointerType === 'touch' && gallery.length > 1 && scaleRef.current <= 1 + BASE_SCALE_EPSILON) {
+			gestureRef.current = {
+				type: 'swipe',
+				pointerId: event.pointerId,
+				startPoint: { x: event.clientX, y: event.clientY },
+			}
 		}
 	}
 
@@ -236,7 +257,9 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 			return
 		}
 
-		if (gesture.pointerId !== event.pointerId || scaleRef.current <= 1) return
+		if (gesture.type === 'swipe') return
+
+		if (gesture.pointerId !== event.pointerId || scaleRef.current <= 1 + BASE_SCALE_EPSILON) return
 
 		applyTransform(scaleRef.current, {
 			x: gesture.startOffset.x + event.clientX - gesture.startPoint.x,
@@ -244,10 +267,34 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		})
 	}
 
-	const finishPointer = (event: ReactPointerEvent<HTMLImageElement>) => {
+	const finishPointer = (event: ReactPointerEvent<HTMLImageElement>, cancelled = false) => {
+		const gesture = gestureRef.current
+		const shouldHandleSwipe =
+			!cancelled &&
+			gesture?.type === 'swipe' &&
+			gesture.pointerId === event.pointerId &&
+			pointersRef.current.size === 1 &&
+			scaleRef.current <= 1 + BASE_SCALE_EPSILON
+
+		const swipeDelta = shouldHandleSwipe
+			? { x: event.clientX - gesture.startPoint.x, y: event.clientY - gesture.startPoint.y }
+			: null
+
 		pointersRef.current.delete(event.pointerId)
 		if (event.currentTarget.hasPointerCapture(event.pointerId)) {
 			event.currentTarget.releasePointerCapture(event.pointerId)
+		}
+
+		if (swipeDelta) {
+			gestureRef.current = null
+			setIsDragging(false)
+
+			const isHorizontalSwipe = Math.abs(swipeDelta.x) >= SWIPE_THRESHOLD && Math.abs(swipeDelta.x) > Math.abs(swipeDelta.y) * SWIPE_AXIS_RATIO
+			if (!isHorizontalSwipe) return
+
+			if (swipeDelta.x < 0 && hasNext) goToImage(activeIndex + 1)
+			if (swipeDelta.x > 0 && hasPrevious) goToImage(activeIndex - 1)
+			return
 		}
 
 		if (pointersRef.current.size >= 2) {
@@ -255,7 +302,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 			return
 		}
 
-		if (pointersRef.current.size === 1 && scaleRef.current > 1) {
+		if (pointersRef.current.size === 1 && scaleRef.current > 1 + BASE_SCALE_EPSILON) {
 			const [pointerId, point] = Array.from(pointersRef.current.entries())[0]
 			gestureRef.current = {
 				type: 'drag',
@@ -271,6 +318,21 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		setIsDragging(false)
 	}
 
+	const handleViewerMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
+		if (gallery.length <= 1) {
+			setHoverNavigation(null)
+			return
+		}
+
+		const rect = event.currentTarget.getBoundingClientRect()
+		const relativeX = event.clientX - rect.left
+		const previousBoundary = rect.width * DESKTOP_NAV_ZONE_RATIO
+		const nextBoundary = rect.width * (1 - DESKTOP_NAV_ZONE_RATIO)
+
+		const nextNavigation = relativeX <= previousBoundary && hasPrevious ? 'previous' : relativeX >= nextBoundary && hasNext ? 'next' : null
+		setHoverNavigation(current => (current === nextNavigation ? current : nextNavigation))
+	}
+
 	const handleViewerClick = (event: ReactMouseEvent<HTMLDivElement>) => {
 		if (event.target === event.currentTarget) handleClose()
 	}
@@ -281,10 +343,12 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：图片查看器控件改为无模糊高透明覆盖；交互、缩放、拖拽与切图逻辑保持不变。 */}
+				{/* 本次改动：PC 左右区域 Hover 显示导航；手机 100%/未放大状态左右滑切图，放大后继续拖图。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
+					onMouseMove={handleViewerMouseMove}
+					onMouseLeave={() => setHoverNavigation(null)}
 					onClick={handleViewerClick}
 					className='relative flex h-[90vh] w-[calc(100vw-2rem)] max-w-none touch-none select-none items-center justify-center overflow-hidden rounded-2xl'>
 					<img
@@ -297,7 +361,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
 						onPointerUp={finishPointer}
-						onPointerCancel={finishPointer}
+						onPointerCancel={(event: ReactPointerEvent<HTMLImageElement>) => finishPointer(event, true)}
 						className='max-h-[90vh] max-w-full touch-none rounded-2xl object-contain will-change-transform'
 						style={{
 							transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
@@ -325,7 +389,8 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看上一张正文图片'
 								title='上一张'
-								className='absolute left-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:opacity-20'>
+								tabIndex={-1}
+								className={`absolute left-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition-[opacity,background-color] duration-150 hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 md:flex ${hoverNavigation === 'previous' && hasPrevious ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
 								←
 							</button>
 							<button
@@ -335,7 +400,8 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 								onWheel={stopWheelPropagation}
 								aria-label='查看下一张正文图片'
 								title='下一张'
-								className='absolute right-2 top-1/2 z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:opacity-20'>
+								tabIndex={-1}
+								className={`absolute right-2 top-1/2 z-30 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-white/[0.08] text-[24px] leading-none text-black/60 transition-[opacity,background-color] duration-150 hover:bg-white/[0.16] focus:outline-none focus:ring-2 focus:ring-black/20 md:flex ${hoverNavigation === 'next' && hasNext ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}>
 								→
 							</button>
 							<div className='pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 px-1 py-0.5 text-[13px] font-medium text-black/50 [text-shadow:0_1px_2px_rgba(255,255,255,0.85)]' aria-live='polite'>
