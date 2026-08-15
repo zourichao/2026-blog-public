@@ -50,6 +50,8 @@ const EDGE_SWIPE_THRESHOLD = 56
 const SWIPE_AXIS_RATIO = 1.1
 const BASE_SCALE_EPSILON = 0.02
 const DESKTOP_NAV_ZONE_RATIO = 0.22
+const CLICK_ZOOM_NATIVE_RATIO = 1.25
+const MOUSE_DRAG_THRESHOLD = 5
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -70,6 +72,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
 	const [isDragging, setIsDragging] = useState(false)
 	const [hoverNavigation, setHoverNavigation] = useState<'previous' | 'next' | null>(null)
+	const [clickZoomTarget, setClickZoomTarget] = useState<number | null>(null)
 
 	const viewerRef = useRef<HTMLDivElement>(null)
 	const imageRef = useRef<HTMLImageElement>(null)
@@ -77,6 +80,10 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	const offsetRef = useRef<Point>({ x: 0, y: 0 })
 	const pointersRef = useRef(new Map<number, Point>())
 	const gestureRef = useRef<GestureState>(null)
+	const lastPointerTypeRef = useRef<string | null>(null)
+	const mousePressRef = useRef<{ pointerId: number; startPoint: Point } | null>(null)
+	const mouseDraggedRef = useRef(false)
+	const suppressMouseClickUntilRef = useRef(0)
 
 	const activeImage = gallery[activeIndex] ?? gallery[sourceIndex] ?? { src, alt, title }
 	const hasPrevious = activeIndex > 0
@@ -119,6 +126,17 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		[clampOffset]
 	)
 
+	const measureClickZoomTarget = useCallback(() => {
+		const image = imageRef.current
+		if (!image || image.naturalWidth <= 0 || image.clientWidth <= 0) {
+			setClickZoomTarget(null)
+			return
+		}
+
+		const nextTarget = Math.min((image.naturalWidth * CLICK_ZOOM_NATIVE_RATIO) / image.clientWidth, MAX_SCALE)
+		setClickZoomTarget(nextTarget > 1 + BASE_SCALE_EPSILON ? nextTarget : null)
+	}, [])
+
 	const resetViewer = useCallback(() => {
 		scaleRef.current = 1
 		offsetRef.current = { x: 0, y: 0 }
@@ -131,6 +149,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 	const handleOpen = useCallback(() => {
 		resetViewer()
+		setClickZoomTarget(null)
 		setHoverNavigation(null)
 		setActiveIndex(sourceIndex)
 		setDisplay(true)
@@ -138,6 +157,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 	const handleClose = useCallback(() => {
 		resetViewer()
+		setClickZoomTarget(null)
 		setHoverNavigation(null)
 		setDisplay(false)
 	}, [resetViewer])
@@ -148,6 +168,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 			if (safeIndex === activeIndex) return
 
 			resetViewer()
+			setClickZoomTarget(null)
 			setActiveIndex(safeIndex)
 		},
 		[activeIndex, gallery.length, resetViewer]
@@ -156,10 +177,13 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	useEffect(() => {
 		if (!display) return
 
-		const handleResize = () => applyTransform(scaleRef.current, offsetRef.current)
+		const handleResize = () => {
+			applyTransform(scaleRef.current, offsetRef.current)
+			measureClickZoomTarget()
+		}
 		window.addEventListener('resize', handleResize)
 		return () => window.removeEventListener('resize', handleResize)
-	}, [applyTransform, display])
+	}, [applyTransform, display, measureClickZoomTarget])
 
 	useEffect(() => {
 		if (!display || gallery.length <= 1) return
@@ -203,6 +227,15 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 	const handlePointerDown = (event: ReactPointerEvent<HTMLImageElement>) => {
 		if (event.pointerType === 'mouse' && event.button !== 0) return
 
+		lastPointerTypeRef.current = event.pointerType
+		if (event.pointerType === 'mouse') {
+			mousePressRef.current = {
+				pointerId: event.pointerId,
+				startPoint: { x: event.clientX, y: event.clientY },
+			}
+			mouseDraggedRef.current = false
+		}
+
 		event.preventDefault()
 		event.currentTarget.setPointerCapture(event.pointerId)
 		pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
@@ -237,6 +270,13 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 		event.preventDefault()
 		pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+		const mousePress = mousePressRef.current
+		if (event.pointerType === 'mouse' && mousePress?.pointerId === event.pointerId) {
+			const movedDistance = Math.hypot(event.clientX - mousePress.startPoint.x, event.clientY - mousePress.startPoint.y)
+			if (movedDistance > MOUSE_DRAG_THRESHOLD) mouseDraggedRef.current = true
+		}
+
 		const gesture = gestureRef.current
 		if (!gesture) return
 
@@ -279,6 +319,11 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 
 	const finishPointer = (event: ReactPointerEvent<HTMLImageElement>, cancelled = false) => {
 		const gesture = gestureRef.current
+		if (event.pointerType === 'mouse' && mousePressRef.current?.pointerId === event.pointerId) {
+			if (!cancelled && mouseDraggedRef.current) suppressMouseClickUntilRef.current = Date.now() + 300
+			mousePressRef.current = null
+			mouseDraggedRef.current = false
+		}
 		const shouldHandleSwipe =
 			!cancelled &&
 			gesture?.type === 'swipe' &&
@@ -355,6 +400,20 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		setIsDragging(false)
 	}
 
+	const handleImageClick = (event: ReactMouseEvent<HTMLImageElement>) => {
+		if (lastPointerTypeRef.current !== 'mouse') return
+		if (Date.now() < suppressMouseClickUntilRef.current) return
+
+		event.stopPropagation()
+		if (scaleRef.current > 1 + BASE_SCALE_EPSILON) {
+			applyTransform(1, { x: 0, y: 0 })
+			return
+		}
+
+		if (!clickZoomTarget || clickZoomTarget <= 1 + BASE_SCALE_EPSILON) return
+		applyTransform(clickZoomTarget, { x: 0, y: 0 })
+	}
+
 	const handleViewerMouseMove = (event: ReactMouseEvent<HTMLDivElement>) => {
 		if (gallery.length <= 1) {
 			setHoverNavigation(null)
@@ -380,7 +439,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：PC 改为无圆圈 Chevron Hover 导航；手机放大后拖到边缘继续滑可接力切图。 */}
+				{/* 本次改动：PC 单击按“原图 125% ÷ 当前实际显示宽度”动态放大；拖拽、滚轮、手机手势及画廊导航保持不变。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
@@ -395,6 +454,8 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						alt={activeImage.alt ?? ''}
 						title={activeImage.title ?? ''}
 						draggable={false}
+						onLoad={measureClickZoomTarget}
+						onClick={handleImageClick}
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
 						onPointerUp={finishPointer}
@@ -403,7 +464,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						style={{
 							transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
 							transformOrigin: 'center center',
-							cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+							cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : clickZoomTarget ? 'zoom-in' : 'default',
 						}}
 					/>
 
