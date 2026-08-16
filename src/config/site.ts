@@ -1,12 +1,12 @@
-const officialSiteUrl = new URL('https://www.999562.xyz')
+import { staticSeoConfig } from '@/lib/seo-config'
 
-export const OFFICIAL_SITE_ORIGIN = officialSiteUrl.origin
-export const OFFICIAL_SITE_NAME = officialSiteUrl.hostname.replace(/^www\./, '')
-export const SEARCH_ENGINE_INDEXING_ENABLED = false
+export const OFFICIAL_SITE_ORIGIN = staticSeoConfig.site.officialOrigin
+export const OFFICIAL_SITE_NAME = staticSeoConfig.site.siteName
+export const SEARCH_ENGINE_INDEXING_ENABLED = true
 
 export const SEARCH_ENGINE_ROBOTS = {
-	index: SEARCH_ENGINE_INDEXING_ENABLED,
-	follow: SEARCH_ENGINE_INDEXING_ENABLED
+	index: true,
+	follow: true
 }
 
 export function getOfficialSiteUrl(pathname = '/'): string {

@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import blogIndex from '@/../public/blogs/index.json'
 import type { BlogIndexItem } from '@/app/blog/types'
-import siteContent from '@/config/site-content.json'
 import { OFFICIAL_SITE_NAME, SEARCH_ENGINE_ROBOTS, getOfficialSiteUrl } from '@/config/site'
 import { BlogPageClient } from './blog-page-client'
 
@@ -11,7 +10,6 @@ type BlogPageProps = {
 }
 
 const blogs = blogIndex as BlogIndexItem[]
-
 function findBlog(slug: string): BlogIndexItem | undefined {
 	return blogs.find(blog => blog.slug === slug)
 }
@@ -26,29 +24,30 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 	const { id } = await params
 	const blog = findBlog(id)
 
-	if (!blog) {
-		notFound()
-	}
-
-	const title = `${blog.title || blog.slug}｜${OFFICIAL_SITE_NAME}`
-	const description = blog.summary?.trim() || siteContent.meta.description
+	if (!blog) notFound()
+	const baseTitle = blog.title || blog.slug
+	const title = OFFICIAL_SITE_NAME.trim() ? `${baseTitle}｜${OFFICIAL_SITE_NAME.trim()}` : baseTitle
+	const description = blog.summary?.trim() || ''
 	const canonical = getOfficialSiteUrl(`/blog/${encodeURIComponent(blog.slug)}`)
+	const cover = blog.cover?.trim()
 
 	return {
 		title,
 		description,
-		alternates: {
-			canonical
-		},
-		robots: SEARCH_ENGINE_ROBOTS,
+		keywords: blog.tags,
+		authors: blog.author ? [{ name: blog.author }] : undefined,
+		alternates: { canonical },
+		robots: blog.hidden === true ? { index: false, follow: false } : SEARCH_ENGINE_ROBOTS,
 		openGraph: {
 			title,
 			description,
-			url: canonical
+			url: canonical,
+			...(cover ? { images: [{ url: getOfficialSiteUrl(cover) }] } : {})
 		},
 		twitter: {
 			title,
-			description
+			description,
+			...(cover ? { images: [getOfficialSiteUrl(cover)] } : {})
 		}
 	}
 }
@@ -56,10 +55,6 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 export default async function Page({ params }: BlogPageProps) {
 	const { id } = await params
 	const blog = findBlog(id)
-
-	if (!blog) {
-		notFound()
-	}
-
+	if (!blog) notFound()
 	return <BlogPageClient slug={blog.slug} />
 }

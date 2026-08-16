@@ -1,0 +1,187 @@
+{
+  "version": 2,
+  "site": {
+    "officialOrigin": "https://www.999562.xyz",
+    "siteName": "原型半径",
+    "brandAlias": "Zourichao",
+    "language": "zh-CN",
+    "author": "Zourichao"
+  },
+  "home": {
+    "title": "原型半径｜设计、技术与生活",
+    "description": "记录设计、技术与生活，分享产品思考、实践经验与个人作品。",
+    "keywords": [
+      "原型半径",
+      "Zourichao",
+      "产品设计",
+      "产品见解",
+      "独立开发",
+      "AI 效率",
+      "智能硬件",
+      "生活随笔"
+    ]
+  },
+  "verification": {
+    "google": {
+      "enabled": false,
+      "value": ""
+    },
+    "bing": {
+      "enabled": false,
+      "value": ""
+    },
+    "baidu": {
+      "enabled": false,
+      "value": ""
+    }
+  },
+  "categories": {
+    "产品设计": {
+      "title": "产品设计与 App 体验",
+      "description": "原型半径产品设计分类，记录 App 产品设计、用户体验、交互方案与落地实践。",
+      "keywords": [
+        "产品设计"
+      ]
+    },
+    "产品见解": {
+      "title": "产品见解与行业分析",
+      "description": "原型半径产品见解分类，记录产品分析、竞品洞察、行业观察与真实产品实践。",
+      "keywords": [
+        "产品见解"
+      ]
+    },
+    "独立开发": {
+      "title": "独立开发与实践",
+      "description": "原型半径独立开发分类，记录个人项目、网站建设、技术实践与产品落地过程。",
+      "keywords": [
+        "独立开发"
+      ]
+    },
+    "AI 效率": {
+      "title": "AI 效率与工具实践",
+      "description": "原型半径 AI 效率分类，记录 AI 应用、效率工具、工作流与实际使用方法。",
+      "keywords": [
+        "AI 效率"
+      ]
+    },
+    "智能硬件": {
+      "title": "智能硬件与 App 产品",
+      "description": "原型半径智能硬件分类，记录设备配套 App、连接控制、异常状态与软硬件协同实践。",
+      "keywords": [
+        "智能硬件"
+      ]
+    },
+    "生活随笔": {
+      "title": "生活随笔",
+      "description": "原型半径生活随笔分类，记录工作之外的生活观察、体验与阶段性思考。",
+      "keywords": [
+        "生活随笔"
+      ]
+    }
+  },
+  "pages": {
+    "/about": {
+      "title": "关于 Zourichao｜原型半径",
+      "description": "了解原型半径与 Zourichao，记录产品设计、技术实践、独立开发与个人思考。",
+      "keywords": [
+        "Zourichao",
+        "原型半径",
+        "产品经理"
+      ]
+    },
+    "/blog": {
+      "title": "全部文章｜原型半径",
+      "description": "浏览原型半径全部文章，覆盖产品设计、产品见解、独立开发、AI 效率、智能硬件与生活随笔。",
+      "keywords": [
+        "产品设计",
+        "产品见解",
+        "独立开发",
+        "AI 效率",
+        "智能硬件",
+        "生活随笔"
+      ]
+    },
+    "/bloggers": {
+      "title": "博主推荐｜原型半径",
+      "description": "原型半径整理关注的博客与创作者，便于发现值得持续阅读的独立内容。",
+      "keywords": [
+        "博客",
+        "独立博客",
+        "创作者"
+      ]
+    },
+    "/clock": {
+      "title": "时钟工具｜原型半径",
+      "description": "原型半径提供的轻量时钟页面，用于日常查看时间与展示。",
+      "keywords": [
+        "时钟",
+        "在线时钟"
+      ]
+    },
+    "/image-toolbox": {
+      "title": "图片工具箱｜原型半径",
+      "description": "原型半径图片工具箱，提供面向日常内容处理的轻量图片辅助能力。",
+      "keywords": [
+        "图片工具",
+        "图片处理"
+      ]
+    },
+    "/live2d": {
+      "title": "Live2D｜原型半径",
+      "description": "原型半径的 Live2D 展示页面。",
+      "keywords": [
+        "Live2D"
+      ]
+    },
+    "/pictures": {
+      "title": "图片管理｜原型半径",
+      "description": "原型半径图片页面，用于查看与管理站点相关图片内容。",
+      "keywords": [
+        "图片管理",
+        "图片"
+      ]
+    },
+    "/projects": {
+      "title": "我的项目｜原型半径",
+      "description": "查看 Zourichao 的产品设计、智能硬件、App 与独立开发相关项目实践。",
+      "keywords": [
+        "产品经理项目",
+        "App 产品设计",
+        "智能硬件",
+        "独立开发"
+      ]
+    },
+    "/share": {
+      "title": "推荐阅读｜原型半径",
+      "description": "原型半径整理值得阅读的网站、文章与内容资源。",
+      "keywords": [
+        "推荐阅读",
+        "内容推荐"
+      ]
+    },
+    "/snippets": {
+      "title": "代码片段｜原型半径",
+      "description": "原型半径整理的代码片段与开发记录，便于日常查阅和复用。",
+      "keywords": [
+        "代码片段",
+        "开发记录"
+      ]
+    },
+    "/svgs": {
+      "title": "SVG 图标｜原型半径",
+      "description": "原型半径的 SVG 图标查看与整理页面。",
+      "keywords": [
+        "SVG",
+        "图标"
+      ]
+    },
+    "/wuthering-waves": {
+      "title": "鸣潮工具｜原型半径",
+      "description": "原型半径的鸣潮相关工具与内容页面。",
+      "keywords": [
+        "鸣潮",
+        "鸣潮工具"
+      ]
+    }
+  }
+}
