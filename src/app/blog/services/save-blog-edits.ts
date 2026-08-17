@@ -1,15 +1,17 @@
 import { toast } from 'sonner'
 import { GITHUB_CONFIG } from '@/consts'
 import { getAuthToken } from '@/lib/auth'
-import { createBlob, createCommit, createTree, getRef, listRepoFilesRecursive, toBase64Utf8, type TreeItem, updateRef } from '@/lib/github-client'
+import { parseCategoryConfig, type CategoryConfigFile } from '@/lib/category-config'
+import { createBlob, createCommit, createTree, getRef, listRepoFilesRecursive, readTextFileFromRepo, toBase64Utf8, type TreeItem, updateRef } from '@/lib/github-client'
 import type { BlogIndexItem } from '@/lib/blog-index'
+
+const CATEGORY_PATH = 'public/blogs/categories.json'
 
 export async function saveBlogEdits(originalItems: BlogIndexItem[], nextItems: BlogIndexItem[], categories: string[]): Promise<void> {
 	const removedSlugs = originalItems.filter(item => !nextItems.some(next => next.slug === item.slug)).map(item => item.slug)
 	const uniqueRemoved = Array.from(new Set(removedSlugs.filter(Boolean)))
 
 	const token = await getAuthToken()
-
 	toast.info('正在获取分支信息...')
 	const refData = await getRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`)
 	const latestCommitSha = refData.sha
@@ -20,7 +22,6 @@ export async function saveBlogEdits(originalItems: BlogIndexItem[], nextItems: B
 		toast.info(`正在收集 ${slug} 文件...`)
 		const basePath = `public/blogs/${slug}`
 		const files = await listRepoFilesRecursive(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, basePath, GITHUB_CONFIG.BRANCH)
-
 		for (const path of files) {
 			treeItems.push({
 				path,
@@ -30,7 +31,6 @@ export async function saveBlogEdits(originalItems: BlogIndexItem[], nextItems: B
 			})
 		}
 	}
-
 	toast.info('正在更新索引...')
 	const sortedItems = [...nextItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 	const indexJson = JSON.stringify(sortedItems, null, 2)
@@ -43,16 +43,27 @@ export async function saveBlogEdits(originalItems: BlogIndexItem[], nextItems: B
 	})
 
 	toast.info('正在更新分类...')
+	const currentCategoriesText = await readTextFileFromRepo(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, CATEGORY_PATH, latestCommitSha)
+	if (currentCategoriesText === null) throw new Error(`缺少必要文件：${CATEGORY_PATH}`)
+	let currentCategoryConfig: CategoryConfigFile
+	try {
+		currentCategoryConfig = parseCategoryConfig(JSON.parse(currentCategoriesText) as unknown)
+	} catch (error) {
+		throw new Error(error instanceof Error ? `当前分类配置无效：${error.message}` : '当前分类配置无效')
+	}
 	const uniqueCategories = Array.from(new Set(categories.map(c => c.trim()).filter(Boolean)))
-	const categoriesJson = JSON.stringify({ categories: uniqueCategories }, null, 2)
+	const missingSlugs = uniqueCategories.filter(category => !currentCategoryConfig.categorySlugs?.[category])
+	if (missingSlugs.length) throw new Error(`分类“${missingSlugs.join('、')}”缺少 URL Slug，请先到 /write 的“管理分类”中维护后再保存`)
+	const nextCategorySlugs: Record<string, string> = {}
+	for (const category of uniqueCategories) nextCategorySlugs[category] = currentCategoryConfig.categorySlugs?.[category] ?? ''
+	const categoriesJson = JSON.stringify({ categories: uniqueCategories, categorySlugs: nextCategorySlugs }, null, 2)
 	const categoriesBlob = await createBlob(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, toBase64Utf8(categoriesJson), 'base64')
 	treeItems.push({
-		path: 'public/blogs/categories.json',
+		path: CATEGORY_PATH,
 		mode: '100644',
 		type: 'blob',
 		sha: categoriesBlob.sha
 	})
-
 	toast.info('正在创建提交...')
 	const treeData = await createTree(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, treeItems, latestCommitSha)
 	const actionLabels: string[] = []
@@ -65,10 +76,8 @@ export async function saveBlogEdits(originalItems: BlogIndexItem[], nextItems: B
 	}
 	const commitLabel = actionLabels.join(' | ')
 	const commitData = await createCommit(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, commitLabel, treeData.sha, [latestCommitSha])
-
 	toast.info('正在更新分支...')
 	await updateRef(token, GITHUB_CONFIG.OWNER, GITHUB_CONFIG.REPO, `heads/${GITHUB_CONFIG.BRANCH}`, commitData.sha)
 
 	toast.success('保存成功！请等待页面部署后刷新')
 }
-

@@ -6,5 +6,13 @@
     "AI 效率",
     "智能硬件",
     "生活随笔"
-  ]
+  ],
+  "categorySlugs": {
+    "产品设计": "product_design",
+    "产品见解": "product_insights",
+    "独立开发": "indie_development",
+    "AI 效率": "ai_efficiency",
+    "智能硬件": "smart_hardware",
+    "生活随笔": "life_notes"
+  }
 }

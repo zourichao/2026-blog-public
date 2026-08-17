@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement, Fragment } from 'react'
 import parse, { type HTMLReactParserOptions, Element, type DOMNode } from 'html-react-parser'
 import { renderMarkdown, type TocItem } from '@/lib/markdown-renderer'
-import { MarkdownImage } from '@/components/markdown-image'
+import { MarkdownImage, type MarkdownImageItem } from '@/components/markdown-image'
 import { CodeBlock } from '@/components/code-block'
 
 type MarkdownRenderResult = {
@@ -9,7 +9,6 @@ type MarkdownRenderResult = {
 	toc: TocItem[]
 	loading: boolean
 }
-
 export function useMarkdownRender(markdown: string): MarkdownRenderResult {
 	const [content, setContent] = useState<ReactElement | null>(null)
 	const [toc, setToc] = useState<TocItem[]>([])
@@ -17,7 +16,6 @@ export function useMarkdownRender(markdown: string): MarkdownRenderResult {
 
 	useEffect(() => {
 		let cancelled = false
-
 		async function render() {
 			setLoading(true)
 			try {
@@ -42,12 +40,23 @@ export function useMarkdownRender(markdown: string): MarkdownRenderResult {
 						return placeholder
 					})
 
+					// 本次改动：在替换 img 前先收集当前 Markdown 正文图片，给预览层提供准确的上一张/下一张顺序。
+					const parsedDocument = new DOMParser().parseFromString(processedHtml, 'text/html')
+					const articleImages: MarkdownImageItem[] = Array.from(parsedDocument.querySelectorAll('img')).map(image => ({
+						src: image.getAttribute('src') ?? '',
+						alt: image.getAttribute('alt') ?? '',
+						title: image.getAttribute('title') ?? '',
+					}))
+					let imageIndex = 0
+
 					// Parse HTML and replace img elements and code block placeholders
 					const options: HTMLReactParserOptions = {
 						replace(domNode: DOMNode) {
 							if (domNode instanceof Element && domNode.name === 'img') {
 								const { src, alt, title } = domNode.attribs
-								return <MarkdownImage src={src} alt={alt} title={title} />
+								const currentImageIndex = imageIndex
+								imageIndex += 1
+								return <MarkdownImage src={src} alt={alt} title={title} images={articleImages} index={currentImageIndex} />
 							}
 							// Handle code block placeholders in text nodes
 							if (domNode.type === 'text' && domNode.data && domNode.data.includes('__CODE_BLOCK_')) {
@@ -55,7 +64,6 @@ export function useMarkdownRender(markdown: string): MarkdownRenderResult {
 								const result = text
 												.split(/(__CODE_BLOCK_\d+__)/)
 												.filter(Boolean);
-
 								return (
 									<>
 										{result.map((item, index) => {
@@ -94,7 +102,6 @@ export function useMarkdownRender(markdown: string): MarkdownRenderResult {
 				}
 			}
 		}
-
 		render()
 
 		return () => {

@@ -1,20 +1,12 @@
 import type { MetadataRoute } from 'next'
-import { SEARCH_ENGINE_INDEXING_ENABLED, getOfficialSiteUrl } from '@/config/site'
+import { getOfficialSiteUrl } from '@/config/site'
 
 export default function robots(): MetadataRoute.Robots {
-	if (!SEARCH_ENGINE_INDEXING_ENABLED) {
-		return {
-			rules: {
-				userAgent: '*',
-				disallow: '/'
-			}
-		}
-	}
-
 	return {
 		rules: {
 			userAgent: '*',
-			allow: '/'
+			allow: '/',
+			disallow: ['/write', '/write/', '/seo', '/seo/', '/api/']
 		},
 		sitemap: getOfficialSiteUrl('/sitemap.xml')
 	}

@@ -4,33 +4,16 @@ import type { Metadata } from 'next'
 import Layout from '@/layout'
 import Head from '@/layout/head'
 import siteContent from '@/config/site-content.json'
-import { OFFICIAL_SITE_ORIGIN, SEARCH_ENGINE_ROBOTS, getOfficialSiteUrl } from '@/config/site'
+import { OFFICIAL_SITE_ORIGIN, SEARCH_ENGINE_ROBOTS } from '@/config/site'
+import { staticSeoConfig } from '@/lib/seo-config'
 
-const {
-	meta: { description },
-	seoTitle,
-	theme
-} = siteContent
-
+const { theme } = siteContent
+const { site } = staticSeoConfig
 export const metadata: Metadata = {
 	metadataBase: new URL(OFFICIAL_SITE_ORIGIN),
-	title: seoTitle,
-	description,
-	alternates: {
-		canonical: getOfficialSiteUrl('/')
-	},
-	robots: SEARCH_ENGINE_ROBOTS,
-	openGraph: {
-		title: seoTitle,
-		description,
-		url: getOfficialSiteUrl('/')
-	},
-	twitter: {
-		title: seoTitle,
-		description
-	}
+	authors: site.author ? [{ name: site.author }] : undefined,
+	robots: SEARCH_ENGINE_ROBOTS
 }
-
 const htmlStyle = {
 	cursor: 'url(/images/cursor.svg) 2 1, auto',
 	'--color-brand': theme.colorBrand,
@@ -42,10 +25,9 @@ const htmlStyle = {
 	'--color-card': theme.colorCard,
 	'--color-article': theme.colorArticle
 }
-
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang='zh-CN' suppressHydrationWarning style={htmlStyle}>
+		<html lang={site.language || 'zh-CN'} suppressHydrationWarning style={htmlStyle}>
 			<Head />
 
 			<body>
