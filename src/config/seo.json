@@ -123,7 +123,7 @@
         "时钟",
         "在线时钟"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/image-toolbox": {
@@ -133,7 +133,7 @@
         "图片工具",
         "图片处理"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/live2d": {
@@ -142,7 +142,7 @@
       "keywords": [
         "Live2D"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/pictures": {
@@ -152,7 +152,7 @@
         "图片管理",
         "图片"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/projects": {
@@ -184,7 +184,7 @@
         "代码片段",
         "开发记录"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/svgs": {
@@ -194,7 +194,7 @@
         "SVG",
         "图标"
       ],
-      "includeInSitemap": true,
+      "includeInSitemap": false,
       "indexable": true
     },
     "/wuthering-waves": {
