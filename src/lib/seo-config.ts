@@ -1,11 +1,11 @@
 import seoFile from '@/config/seo.json'
 
-export const SEO_CONFIG_VERSION = 2
+export const SEO_CONFIG_VERSION = 3
 
 export type VerificationItem = { enabled: boolean; value: string }
 export type SeoTextConfig = { title?: string; description?: string; keywords?: string[] }
 export type CategorySeoConfig = SeoTextConfig
-export type PageSeoConfig = SeoTextConfig
+export type PageSeoConfig = SeoTextConfig & { includeInSitemap?: boolean; indexable?: boolean }
 
 export const PUBLIC_SEO_PAGES = [
 	{ path: '/about', label: '关于' },
@@ -45,13 +45,14 @@ export type SeoConfig = {
 }
 
 export type NormalizedSeoTextConfig = { title: string; description: string; keywords: string[] }
+export type NormalizedPageSeoConfig = NormalizedSeoTextConfig & { includeInSitemap: boolean; indexable: boolean }
 export type NormalizedSeoConfig = {
 	version: number
 	site: { officialOrigin: string; siteName: string; brandAlias: string; language: string; author: string }
 	home: NormalizedSeoTextConfig
 	verification: { google: VerificationItem; bing: VerificationItem; baidu: VerificationItem }
 	categories: Record<string, NormalizedSeoTextConfig>
-	pages: Record<PublicSeoPagePath, NormalizedSeoTextConfig>
+	pages: Record<PublicSeoPagePath, NormalizedPageSeoConfig>
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -75,6 +76,12 @@ const normalizeTextConfig = (input?: SeoTextConfig): NormalizedSeoTextConfig => 
 	keywords: normalizeKeywords(input?.keywords)
 })
 
+const normalizePageConfig = (input?: PageSeoConfig): NormalizedPageSeoConfig => ({
+	...normalizeTextConfig(input),
+	includeInSitemap: input?.includeInSitemap !== false,
+	indexable: input?.indexable !== false
+})
+
 export function normalizeOfficialOrigin(value: string): string {
 	const trimmed = value.trim().replace(/\/+$/, '')
 	let url: URL
@@ -94,7 +101,7 @@ export function normalizeSeoConfig(input: SeoConfig): NormalizedSeoConfig {
 	const categories: NormalizedSeoConfig['categories'] = {}
 	for (const [name, value] of Object.entries(input.categories ?? {})) categories[name] = normalizeTextConfig(value)
 	const pages = {} as NormalizedSeoConfig['pages']
-	for (const { path } of PUBLIC_SEO_PAGES) pages[path] = normalizeTextConfig(input.pages?.[path])
+	for (const { path } of PUBLIC_SEO_PAGES) pages[path] = normalizePageConfig(input.pages?.[path])
 	return {
 		version: typeof input.version === 'number' ? input.version : SEO_CONFIG_VERSION,
 		site: {
@@ -121,6 +128,16 @@ function validateTextConfig(value: unknown, path: string) {
 	if (value.title !== undefined && typeof value.title !== 'string') throw new Error(`${path}.title 必须是字符串`)
 	if (value.description !== undefined && typeof value.description !== 'string') throw new Error(`${path}.description 必须是字符串`)
 	if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some(item => typeof item !== 'string'))) throw new Error(`${path}.keywords 必须是字符串数组`)
+}
+
+function validatePageConfig(value: unknown, path: string) {
+	if (!isPlainObject(value)) throw new Error(`${path} 必须是对象`)
+	assertAllowedKeys(value, ['title', 'description', 'keywords', 'includeInSitemap', 'indexable'], path)
+	if (value.title !== undefined && typeof value.title !== 'string') throw new Error(`${path}.title 必须是字符串`)
+	if (value.description !== undefined && typeof value.description !== 'string') throw new Error(`${path}.description 必须是字符串`)
+	if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some(item => typeof item !== 'string'))) throw new Error(`${path}.keywords 必须是字符串数组`)
+	if (value.includeInSitemap !== undefined && typeof value.includeInSitemap !== 'boolean') throw new Error(`${path}.includeInSitemap 必须是布尔值`)
+	if (value.indexable !== undefined && typeof value.indexable !== 'boolean') throw new Error(`${path}.indexable 必须是布尔值`)
 }
 
 export function validateSeoConfigShape(input: unknown): { config: NormalizedSeoConfig; warnings: string[] } {
@@ -163,7 +180,7 @@ export function validateSeoConfigShape(input: unknown): { config: NormalizedSeoC
 		if (!isPlainObject(data.pages)) throw new Error('pages 必须是对象')
 		for (const [path, page] of Object.entries(data.pages)) {
 			if (!PUBLIC_SEO_PAGE_PATH_SET.has(path)) throw new Error(`pages 不支持当前不存在或未声明的公开页面：${path}`)
-			validateTextConfig(page, `pages.${path}`)
+			validatePageConfig(page, `pages.${path}`)
 		}
 	}
 

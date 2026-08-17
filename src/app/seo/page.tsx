@@ -82,6 +82,30 @@ function StatusBadge({ configured }: { configured: boolean }) {
 	)
 }
 
+function PageStateBadge({ enabled, enabledText, disabledText, tone }: { enabled: boolean; enabledText: string; disabledText: string; tone: 'emerald' | 'sky' }) {
+	const activeClass = tone === 'emerald' ? 'bg-emerald-500/10 text-emerald-700' : 'bg-sky-500/10 text-sky-700'
+	return <span className={`rounded-full px-2 py-0.5 text-[10px] ${enabled ? activeClass : 'bg-foreground/[0.05] text-secondary'}`}>{enabled ? enabledText : disabledText}</span>
+}
+
+function PageControlSwitch({ checked, onChange, title, description, enabledText, disabledText, tone }: { checked: boolean; onChange: (checked: boolean) => void; title: string; description: string; enabledText: string; disabledText: string; tone: 'emerald' | 'sky' }) {
+	const activeClass = tone === 'emerald' ? 'border-emerald-500/25 bg-emerald-500/[0.06]' : 'border-sky-500/25 bg-sky-500/[0.06]'
+	const trackClass = tone === 'emerald' ? 'bg-emerald-500' : 'bg-sky-500'
+	return (
+		<button type='button' role='switch' aria-checked={checked} onClick={() => onChange(!checked)} className={`w-full rounded-2xl border p-3.5 text-left transition ${checked ? activeClass : 'bg-foreground/[0.015] hover:bg-foreground/[0.035]'}`}>
+			<div className='flex items-start justify-between gap-4'>
+				<div className='min-w-0'>
+					<p className='text-sm font-medium'>{title}</p>
+					<p className='text-secondary mt-1 text-xs leading-5'>{description}</p>
+				</div>
+				<span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition ${checked ? trackClass : 'bg-foreground/15'}`}>
+					<span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+				</span>
+			</div>
+			<p className={`mt-2 text-[11px] ${checked ? (tone === 'emerald' ? 'text-emerald-700' : 'text-sky-700') : 'text-secondary'}`}>{checked ? enabledText : disabledText}</p>
+		</button>
+	)
+}
+
 function OverviewCard({ title, value, hint }: { title: string; value: string; hint?: string }) {
 	return (
 		<div className='rounded-2xl border bg-white/35 p-4 dark:bg-black/10'>
@@ -261,6 +285,8 @@ export default function SeoPage() {
 
 	const configuredCategoryCount = categories.filter(name => isSeoConfigured(config.categories[name] ?? { title: '', description: '', keywords: [] })).length
 	const configuredPageCount = PUBLIC_SEO_PAGES.filter(({ path }) => isSeoConfigured(config.pages[path])).length
+	const indexablePageCount = PUBLIC_SEO_PAGES.filter(({ path }) => config.pages[path].indexable).length
+	const sitemapPageCount = PUBLIC_SEO_PAGES.filter(({ path }) => config.pages[path].includeInSitemap).length
 	const verificationEnabledCount = Object.values(config.verification).filter(item => item.enabled).length
 	const activeCategory = selectedCategory && categories.includes(selectedCategory) ? selectedCategory : (categories[0] ?? '')
 	const activePageDefinition = PUBLIC_SEO_PAGES.find(item => item.path === selectedPage) ?? PUBLIC_SEO_PAGES[0]
@@ -320,7 +346,7 @@ export default function SeoPage() {
 								<OverviewCard title='搜索收录' value={SEARCH_ENGINE_INDEXING_ENABLED ? '已开启' : '已关闭'} hint='公开页面按代码规则输出 robots；/write、/seo、/api/* 单独禁止。' />
 								<OverviewCard title='SEO JSON' value={`v${config.version}`} hint={unsaved ? '当前有未保存修改。' : '当前页面与已读取配置一致。'} />
 								<OverviewCard title='分类 SEO' value={`${configuredCategoryCount}/${categories.length} 已配置`} hint={categoryChanged ? '检测到分类变化，保存后写入 GitHub。' : '分类配置与当前分类列表一致。'} />
-								<OverviewCard title='公开页面 SEO' value={`${configuredPageCount}/${PUBLIC_SEO_PAGES.length} 已配置`} hint='每个公开根页面都有独立 Title / Description / Canonical。' />
+								<OverviewCard title='公开页面 SEO' value={`${configuredPageCount}/${PUBLIC_SEO_PAGES.length} 已配置`} hint={`${indexablePageCount} 个允许收录 · ${sitemapPageCount} 个加入 Sitemap。`} />
 								<OverviewCard title='搜索引擎验证' value={`${verificationEnabledCount}/3 已开启`} hint='Google、Bing、百度分别独立控制。' />
 							</div>
 							<div className='mt-5 grid gap-3 sm:grid-cols-2'>
@@ -441,6 +467,10 @@ export default function SeoPage() {
 											<button key={path} type='button' onClick={() => setSelectedPage(path)} className={`w-full rounded-xl border p-3 text-left transition ${active ? 'border-brand bg-brand/5' : 'hover:bg-foreground/[0.03]'}`}>
 												<div className='flex items-center justify-between gap-2'><span className='text-sm font-medium'>{label}</span><StatusBadge configured={isSeoConfigured(item)} /></div>
 												<p className='text-secondary mt-1 truncate font-mono text-xs'>{path}</p>
+												<div className='mt-2 flex flex-wrap gap-1.5'>
+													<PageStateBadge enabled={item.indexable} enabledText='允许收录' disabledText='禁止收录' tone='emerald' />
+													<PageStateBadge enabled={item.includeInSitemap} enabledText='Sitemap' disabledText='不进 Sitemap' tone='sky' />
+												</div>
 											</button>
 										)
 									})}
@@ -450,8 +480,19 @@ export default function SeoPage() {
 									const canonical = origin ? `${origin}${activePage}` : activePage
 									return (
 										<div className='rounded-2xl border p-4 sm:p-5'>
-											<div><h3 className='font-medium'>{activePageDefinition.label}</h3><p className='text-secondary mt-1 font-mono text-xs'>{activePage}</p></div>
-											<div className='mt-4 space-y-4'>
+											<div className='flex flex-wrap items-start justify-between gap-3'>
+												<div><h3 className='font-medium'>{activePageDefinition.label}</h3><p className='text-secondary mt-1 font-mono text-xs'>{activePage}</p></div>
+												<div className='flex flex-wrap gap-1.5'>
+													<PageStateBadge enabled={item.indexable} enabledText='允许收录' disabledText='禁止收录' tone='emerald' />
+													<PageStateBadge enabled={item.includeInSitemap} enabledText='Sitemap' disabledText='不进 Sitemap' tone='sky' />
+												</div>
+											</div>
+											<div className='mt-4 grid gap-3 sm:grid-cols-2'>
+												<PageControlSwitch checked={item.indexable} onChange={indexable => setVisualConfig({ ...config, pages: { ...config.pages, [activePage]: { ...item, indexable } } })} title='允许搜索收录' description='关闭后页面仍可访问，但会输出 noindex / nofollow。' enabledText='当前允许搜索引擎建立索引' disabledText='当前已禁止搜索引擎收录' tone='emerald' />
+												<PageControlSwitch checked={item.includeInSitemap} onChange={includeInSitemap => setVisualConfig({ ...config, pages: { ...config.pages, [activePage]: { ...item, includeInSitemap } } })} title='加入 Sitemap' description='关闭后 sitemap.xml 不再列出这个页面。' enabledText='当前会写入 sitemap.xml' disabledText='当前不会写入 sitemap.xml' tone='sky' />
+											</div>
+											{!item.indexable && item.includeInSitemap && <div className='mt-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-3 py-2.5 text-xs leading-5 text-amber-700'>当前页面已禁止搜索收录，但仍在 Sitemap 中。两项可以独立设置，但通常建议同时关闭“加入 Sitemap”。</div>}
+											<div className='mt-5 space-y-4'>
 												<div><label className='mb-1 block text-xs font-medium'>SEO Title</label><input value={item.title} onChange={event => setVisualConfig({ ...config, pages: { ...config.pages, [activePage]: { ...item, title: event.target.value } } })} className='bg-card w-full rounded-lg border px-3 py-2 text-sm' />{inlineWarn(item.title, 30, 'Title 未填写；允许保存，但不建议为空。')}</div>
 												<div><label className='mb-1 block text-xs font-medium'>Description</label><textarea rows={3} value={item.description} onChange={event => setVisualConfig({ ...config, pages: { ...config.pages, [activePage]: { ...item, description: event.target.value } } })} className='bg-card w-full rounded-lg border px-3 py-2 text-sm' />{inlineWarn(item.description, 80, 'Description 未填写；允许保存，但不建议为空。')}</div>
 												<KeywordEditor value={item.keywords} onChange={keywords => setVisualConfig({ ...config, pages: { ...config.pages, [activePage]: { ...item, keywords } } })} />

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "site": {
     "officialOrigin": "https://www.999562.xyz",
     "siteName": "原型半径",
@@ -87,7 +87,9 @@
         "Zourichao",
         "原型半径",
         "产品经理"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/blog": {
       "title": "全部文章｜原型半径",
@@ -99,7 +101,9 @@
         "AI 效率",
         "智能硬件",
         "生活随笔"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/bloggers": {
       "title": "博主推荐｜原型半径",
@@ -108,7 +112,9 @@
         "博客",
         "独立博客",
         "创作者"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/clock": {
       "title": "时钟工具｜原型半径",
@@ -116,7 +122,9 @@
       "keywords": [
         "时钟",
         "在线时钟"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/image-toolbox": {
       "title": "图片工具箱｜原型半径",
@@ -124,14 +132,18 @@
       "keywords": [
         "图片工具",
         "图片处理"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/live2d": {
       "title": "Live2D｜原型半径",
       "description": "原型半径的 Live2D 展示页面。",
       "keywords": [
         "Live2D"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/pictures": {
       "title": "图片管理｜原型半径",
@@ -139,7 +151,9 @@
       "keywords": [
         "图片管理",
         "图片"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/projects": {
       "title": "我的项目｜原型半径",
@@ -149,7 +163,9 @@
         "App 产品设计",
         "智能硬件",
         "独立开发"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/share": {
       "title": "推荐阅读｜原型半径",
@@ -157,7 +173,9 @@
       "keywords": [
         "推荐阅读",
         "内容推荐"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/snippets": {
       "title": "代码片段｜原型半径",
@@ -165,7 +183,9 @@
       "keywords": [
         "代码片段",
         "开发记录"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/svgs": {
       "title": "SVG 图标｜原型半径",
@@ -173,7 +193,9 @@
       "keywords": [
         "SVG",
         "图标"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     },
     "/wuthering-waves": {
       "title": "鸣潮工具｜原型半径",
@@ -181,7 +203,9 @@
       "keywords": [
         "鸣潮",
         "鸣潮工具"
-      ]
+      ],
+      "includeInSitemap": true,
+      "indexable": true
     }
   }
 }

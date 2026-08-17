@@ -31,6 +31,6 @@ export function buildPublicPageMetadata(path: PublicSeoPagePath): Metadata {
 		description: page.description,
 		keywords: page.keywords,
 		alternates: { canonical: getOfficialSiteUrl(path) },
-		robots: SEARCH_ENGINE_ROBOTS
+		robots: page.indexable ? SEARCH_ENGINE_ROBOTS : { index: false, follow: false }
 	}
 }
