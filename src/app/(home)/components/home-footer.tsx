@@ -24,6 +24,7 @@ function SecurityRecordIcon() {
 
 export default function HomeFooter({ brandName, domain, description, copyright, beian }: HomeFooterProps) {
 	const hasRecordInfo = Boolean(beian?.text || beian?.publicSecurityText)
+	const hasBothRecords = Boolean(beian?.text && beian?.publicSecurityText)
 
 	return (
 		<footer className='mt-4 rounded-[18px] border border-white/60 bg-white/[0.4] px-4 py-4 shadow-[0_14px_38px_-36px_rgba(15,23,42,0.34)] backdrop-blur-xl sm:px-5 lg:mt-5 lg:px-6'>
@@ -38,7 +39,7 @@ export default function HomeFooter({ brandName, domain, description, copyright, 
 					</div>
 				</div>
 
-				{/* 本次改动：首页备案由单行长文本 → 分层信息组；PC 右对齐，移动端左对齐，避免公安备案号被挤碎。 */}
+				{/* 本次改动：PC 备案由 3 行压成 2 行；移动端仍保持版权 / ICP / 公安备案 3 行，降低 Footer 纵向高度。 */}
 				<div className='min-w-0 rounded-xl border border-white/45 bg-white/20 px-2.5 py-2 min-[801px]:min-w-[250px] min-[801px]:rounded-none min-[801px]:border-0 min-[801px]:bg-transparent min-[801px]:p-0'>
 					<div className='flex min-w-0 items-center justify-between gap-3 min-[801px]:justify-end'>
 						{copyright ? <span className='whitespace-nowrap text-xs leading-5 text-slate-500'>{copyright}</span> : <span />}
@@ -46,7 +47,7 @@ export default function HomeFooter({ brandName, domain, description, copyright, 
 					</div>
 
 					{hasRecordInfo && (
-						<div className='mt-1 flex min-w-0 flex-col items-start gap-0.5 text-xs leading-5 text-slate-500 min-[801px]:items-end'>
+						<div className='mt-0.5 flex min-w-0 flex-col items-start gap-0.5 text-xs leading-5 text-slate-500 min-[801px]:flex-row min-[801px]:items-center min-[801px]:justify-end min-[801px]:gap-1.5'>
 							{beian?.text &&
 								(beian.link ? (
 									<a
@@ -59,6 +60,8 @@ export default function HomeFooter({ brandName, domain, description, copyright, 
 								) : (
 									<span className='max-w-full whitespace-nowrap'>{beian.text}</span>
 								))}
+
+							{hasBothRecords && <span className='hidden min-[801px]:inline' aria-hidden='true'>·</span>}
 
 							{beian?.publicSecurityText &&
 								(beian.publicSecurityLink ? (
