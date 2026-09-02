@@ -72,6 +72,8 @@
   "aboutSite": "原型半径是 zourichao 的个人博客，以原型承载想法，以实践拓展边界，在一次次验证与落地中，扩大理解与创造世界的半径。",
   "beian": {
     "text": "粤ICP备2026101935号-1",
-    "link": "https://beian.miit.gov.cn/"
+    "link": "https://beian.miit.gov.cn/",
+    "publicSecurityText": "粤公网安备44030002016071号",
+    "publicSecurityLink": "https://beian.mps.gov.cn/"
   }
 }
