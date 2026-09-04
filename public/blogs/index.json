@@ -1,5 +1,19 @@
 [
   {
+    "slug": "gs_fit_smart_hardware_product_delivery_analysis",
+    "title": "GS FIT 产品与业务观察：从智能硬件 App 到交付能力的产品视角梳理",
+    "author": "zourichao",
+    "tags": [
+      "智能硬件",
+      "GS FIT"
+    ],
+    "date": "2026-09-04T12:45",
+    "summary": "基于公开资料、应用商店评价与产品体验，从公司定位、B 端交付、首次连接、连接可靠性、质量数据、健康 AI 与项目管理等维度，梳理 GS FIT 这类智能硬件方案中 App 真正承担的价值，以及产品能力如何从“功能可用”走向“稳定交付”。",
+    "cover": "/blogs/gs_fit_smart_hardware_product_delivery_analysis/7617b933415d9adb.webp",
+    "hidden": false,
+    "category": "产品见解"
+  },
+  {
     "slug": "ximeng_shouhu_app_analysis",
     "title": "西萌守护 App 体验分析：从首登权限、手表绑定到定位与设备管理",
     "author": "zourichao",
