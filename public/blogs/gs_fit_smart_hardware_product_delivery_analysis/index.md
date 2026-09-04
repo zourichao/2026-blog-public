@@ -79,7 +79,7 @@ GS FIT 给我的第一印象，不止是一个智能手表配套 App，更是一
 
 ![](/blogs/gs_fit_smart_hardware_product_delivery_analysis/466f104c020459fc.webp)
 
-## 05｜质量数据：不是做报表，本质上是决定先修什么
+## 05｜质量数据：让问题进入产品优先级
 
 智能硬件产品最容易出现的问题，是数据很多，但依然不知道需求优先级。
 
@@ -95,7 +95,7 @@ GS FIT 给我的第一印象，不止是一个智能手表配套 App，更是一
 
 ![](/blogs/gs_fit_smart_hardware_product_delivery_analysis/ec919d1a44243f65.webp)
 
-## 06｜健康 AI：不是多一个助手，核心在于告诉用户下一步怎么做
+## 06｜健康 AI：让数据变成下一步行动
 
 健康数据越来越多，但展示更多数据并不等于产生更多价值。
 
@@ -113,7 +113,7 @@ GS FIT 给我的第一印象，不止是一个智能手表配套 App，更是一
 
 ![](/blogs/gs_fit_smart_hardware_product_delivery_analysis/c0d0c370b2f0df4c.webp)
 
-## 07｜项目能力：真正的快，是少等待、少返工
+## 07｜项目能力：减少等待和返工
 
 智能硬件项目通常同时依赖：
 
