@@ -32,6 +32,20 @@
     "category": "产品见解"
   },
   {
+    "slug": "screen_ai_companion_robot_app_architecture",
+    "title": "带屏 AI 陪伴机器人 App 怎么规划？从功能架构到上线验收",
+    "author": "zourichao",
+    "tags": [
+      "AI陪伴机器人",
+      "App功能架构"
+    ],
+    "date": "2026-08-31T21:40",
+    "summary": "带屏 AI 陪伴机器人 App 不只是配网和遥控。本文从首次使用、设备状态、AI 会话、关系记忆、售后迁移到上线质量指标，梳理一套面向实际研发交付的功能架构与产品规划思路。",
+    "cover": "/blogs/screen_ai_companion_robot_app_architecture/8485dbcdd8b8f594.webp",
+    "hidden": false,
+    "category": "产品设计"
+  },
+  {
     "slug": "robot_mode_state_table",
     "title": "一张机器人模式状态表 | 待机、休眠、专注、开会到底怎么定义？",
     "author": "zourichao",
