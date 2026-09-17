@@ -439,7 +439,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 		<>
 			<img src={src} alt={alt} title={title} loading='lazy' onClick={handleOpen} className='cursor-pointer transition-opacity hover:opacity-80' />
 			<DialogModal open={display} onClose={handleClose} className='max-w-none bg-transparent p-0'>
-				{/* 本次改动：PC 单击按“原图 125% ÷ 当前实际显示宽度”动态放大；拖拽、滚轮、手机手势及画廊导航保持不变。 */}
+				{/* 本次改动：手机继续保留 transform 合成优化；PC 取消 will-change 预合成，减少滚轮放大后复用低分辨率合成层导致的发虚。 */}
 				<div
 					ref={viewerRef}
 					onWheel={handleWheel}
@@ -460,7 +460,7 @@ export function MarkdownImage({ src, alt = '', title = '', images, index = 0 }: 
 						onPointerMove={handlePointerMove}
 						onPointerUp={finishPointer}
 						onPointerCancel={(event: ReactPointerEvent<HTMLImageElement>) => finishPointer(event, true)}
-						className='max-h-[90vh] max-w-full touch-none rounded-2xl object-contain will-change-transform'
+						className='max-h-[90vh] max-w-full touch-none rounded-2xl object-contain will-change-transform md:will-change-auto'
 						style={{
 							transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`,
 							transformOrigin: 'center center',
